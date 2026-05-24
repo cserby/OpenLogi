@@ -1,20 +1,20 @@
 [package]
-name = "optminus-cli"
+name = "openlogi-cli"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 authors.workspace = true
-description = "OptMinus command-line interface."
+description = "OpenLogi command-line interface."
 
 [[bin]]
-name = "optminus"
+name = "openlogi"
 path = "src/main.rs"
 
 [dependencies]
-optminus-core = { path = "../optminus-core" }
-optminus-hid = { path = "../optminus-hid" }
+openlogi-core = { path = "../openlogi-core" }
+openlogi-hid = { path = "../openlogi-hid" }
 # Command-line parsing with derive.
 clap = { workspace = true }
 # Single error sink for the binary; libraries use thiserror.

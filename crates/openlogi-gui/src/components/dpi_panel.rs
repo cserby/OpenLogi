@@ -61,17 +61,14 @@ impl DpiPanel {
                 .default_value(initial_dpi)
         });
 
-        let slider_sub = cx.subscribe(
-            &slider_state,
-            |_panel, _slider, event: &SliderEvent, cx| {
-                let SliderEvent::Change(value) = event else {
-                    return;
-                };
-                let dpi = clamp_dpi(value.start());
-                cx.update_global::<AppState, _>(|state, _| state.dpi = dpi);
-                cx.notify();
-            },
-        );
+        let slider_sub = cx.subscribe(&slider_state, |_panel, _slider, event: &SliderEvent, cx| {
+            let SliderEvent::Change(value) = event else {
+                return;
+            };
+            let dpi = clamp_dpi(value.start());
+            cx.update_global::<AppState, _>(|state, _| state.dpi = dpi);
+            cx.notify();
+        });
 
         let animation = cx.spawn(async move |this, cx| {
             let mut last = cx.background_executor().now();

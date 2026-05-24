@@ -17,7 +17,7 @@ use hidpp::{
         bolt::{BoltDeviceConnection, BoltDeviceKind, BoltEvent, BoltReceiver},
     },
 };
-use optminus_core::device::{
+use openlogi_core::device::{
     BatteryInfo, BatteryLevel, BatteryStatus, DeviceInventory, DeviceKind, PairedDevice,
     ReceiverInfo,
 };

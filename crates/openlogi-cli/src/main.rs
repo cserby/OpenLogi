@@ -4,12 +4,12 @@ use tracing_subscriber::{EnvFilter, fmt};
 
 mod cmd;
 
-/// Options-minus: a local-first companion for Logitech HID++ peripherals.
+/// OpenLogi: a local-first companion for Logitech HID++ peripherals.
 #[derive(Debug, Parser)]
 #[command(
-    name = "optminus",
+    name = "openlogi",
     version,
-    about = "Options-minus: a local-first companion for Logitech HID++ peripherals.",
+    about = "OpenLogi: a local-first companion for Logitech HID++ peripherals.",
     long_about = None,
 )]
 struct Cli {
@@ -22,7 +22,7 @@ async fn main() -> Result<()> {
     fmt()
         .with_writer(std::io::stderr)
         .with_env_filter(
-            EnvFilter::try_from_env("OPTMINUS_LOG").unwrap_or_else(|_| EnvFilter::new("info")),
+            EnvFilter::try_from_env("OPENLOGI_LOG").unwrap_or_else(|_| EnvFilter::new("info")),
         )
         .init();
 

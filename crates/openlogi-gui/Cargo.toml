@@ -1,20 +1,20 @@
 [package]
-name = "optminus-gui"
+name = "openlogi-gui"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 authors.workspace = true
-description = "GPUI-based desktop UI for OptMinus."
+description = "GPUI-based desktop UI for OpenLogi."
 
 [[bin]]
-name = "optminus-gui"
+name = "openlogi-gui"
 path = "src/main.rs"
 
 [dependencies]
-optminus-core = { path = "../optminus-core" }
-optminus-hid = { path = "../optminus-hid" }
+openlogi-core = { path = "../openlogi-core" }
+openlogi-hid = { path = "../openlogi-hid" }
 # GPU-accelerated UI framework and its component library.
 gpui = { workspace = true }
 gpui_platform = { workspace = true }

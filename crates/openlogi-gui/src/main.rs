@@ -1,4 +1,4 @@
-//! OptMinus GPUI desktop window.
+//! OpenLogi GPUI desktop window.
 //!
 //! Initial HID++ inventory is collected synchronously on startup (GPUI owns
 //! the main thread, so we can't move it onto a tokio runtime). Live polling
@@ -17,7 +17,7 @@ use gpui::{
     px,
 };
 use gpui_component::{ActiveTheme, Root};
-use optminus_core::device::DeviceInventory;
+use openlogi_core::device::DeviceInventory;
 use tracing_subscriber::EnvFilter;
 
 use crate::app::AppView;
@@ -35,7 +35,7 @@ fn main() -> Result<()> {
                 window_bounds: Some(WindowBounds::Windowed(bounds)),
                 window_min_size: Some(Size::new(px(720.), px(520.))),
                 titlebar: Some(TitlebarOptions {
-                    title: Some(SharedString::from("Options−")),
+                    title: Some(SharedString::from("OpenLogi")),
                     appears_transparent: false,
                     traffic_light_position: None,
                 }),
@@ -62,7 +62,7 @@ fn init_tracing() {
     tracing_subscriber::fmt()
         .with_writer(std::io::stderr)
         .with_env_filter(
-            EnvFilter::try_from_env("OPTMINUS_LOG").unwrap_or_else(|_| EnvFilter::new("info")),
+            EnvFilter::try_from_env("OPENLOGI_LOG").unwrap_or_else(|_| EnvFilter::new("info")),
         )
         .init();
 }
@@ -72,6 +72,6 @@ fn enumerate_blocking() -> Result<Vec<DeviceInventory>> {
         .enable_all()
         .build()
         .context("tokio runtime init")?;
-    rt.block_on(optminus_hid::enumerate())
-        .context("optminus_hid::enumerate")
+    rt.block_on(openlogi_hid::enumerate())
+        .context("openlogi_hid::enumerate")
 }

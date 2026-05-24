@@ -10,7 +10,7 @@ use gpui::{
     Window, div, px, rgb,
 };
 use gpui_component::{ActiveTheme, h_flex, v_flex};
-use optminus_core::device::DeviceInventory;
+use openlogi_core::device::DeviceInventory;
 
 use crate::components::device_carousel::DeviceCarousel;
 use crate::components::dpi_panel::DpiPanel;
@@ -61,7 +61,7 @@ fn header(carousel: &Entity<DeviceCarousel>) -> impl IntoElement {
             div()
                 .text_lg()
                 .font_weight(FontWeight::SEMIBOLD)
-                .child("Options−"),
+                .child("OpenLogi"),
         )
         .child(div().flex_1().min_w_0().child(carousel.clone()))
 }

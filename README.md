@@ -1,21 +1,21 @@
-# Options−
+# OpenLogi
 
-> **Options+ ? Try Options−.**
+> **Options+ ? Try OpenLogi.**
 
 A lightweight, local-first, open-source companion for Logitech HID++ peripherals.
 No telemetry. No cloud. No account. No auto-update checker. Plain TOML config.
 
 ![status: pre-alpha](https://img.shields.io/badge/status-pre--alpha-orange)
 ![rust: stable](https://img.shields.io/badge/rust-stable-blue)
-<!-- ![ci](https://github.com/AprilNEA/OptMinus/actions/workflows/ci.yml/badge.svg) -->
+<!-- ![ci](https://github.com/AprilNEA/OpenLogi/actions/workflows/ci.yml/badge.svg) -->
 
 ---
 
 ## What it is
 
-Options− talks to Logitech HID++ mice, keyboards, and trackballs without
+OpenLogi talks to Logitech HID++ mice, keyboards, and trackballs without
 running the official Logi Options+ application. v0.0.1 is a probe-only CLI:
-plug in a Logi Bolt receiver, run `optminus`, see what's paired and how full
+plug in a Logi Bolt receiver, run `openlogi`, see what's paired and how full
 the batteries are.
 
 ## What it is not
@@ -52,8 +52,8 @@ the batteries are.
 Prerequisites: a recent stable Rust toolchain (Edition 2024, MSRV 1.85).
 
 ```sh
-git clone https://github.com/AprilNEA/OptMinus
-cd OptMinus
+git clone https://github.com/AprilNEA/OpenLogi
+cd OpenLogi
 cargo run --release -- list
 ```
 
@@ -61,13 +61,13 @@ Or build and put the binary somewhere on `PATH`:
 
 ```sh
 cargo build --release
-cp target/release/optminus ~/.local/bin/
+cp target/release/openlogi ~/.local/bin/
 ```
 
-The GUI binary (`optminus-gui`) opens a desktop window with the same device list:
+The GUI binary (`openlogi-gui`) opens a desktop window with the same device list:
 
 ```sh
-cargo run -p optminus-gui --release
+cargo run -p openlogi-gui --release
 ```
 
 GUI builds need Apple's full Xcode toolchain (Xcode 16+ with the optional Metal
@@ -75,7 +75,7 @@ Toolchain component) on macOS. CLI builds need only stable Rust.
 
 ### macOS
 
-Quit **Logi Options+** before running `optminus` — the two applications fight
+Quit **Logi Options+** before running `openlogi` — the two applications fight
 over HID++ access and only one can talk to a given receiver at a time.
 
 ### Linux
@@ -92,9 +92,9 @@ reports welcome.
 
 Config lives at the platform-standard application support path:
 
-- macOS: `~/Library/Application Support/dev.OptMinus.optminus/config.toml`
-- Linux: `$XDG_CONFIG_HOME/optminus/config.toml`
-- Windows: `%APPDATA%\OptMinus\optminus\config\config.toml`
+- macOS: `~/Library/Application Support/dev.OpenLogi.openlogi/config.toml`
+- Linux: `$XDG_CONFIG_HOME/openlogi/config.toml`
+- Windows: `%APPDATA%\OpenLogi\openlogi\config\config.toml`
 
 v0.0.1 doesn't read anything from it; the file isn't created until v0.0.2.
 
@@ -102,10 +102,10 @@ v0.0.1 doesn't read anything from it; the file isn't created until v0.0.2.
 
 ```
 crates/
-  optminus-core/   serializable types, config, paths — no HID, no async
-  optminus-hid/    hidpp + async-hid glue: enumerate(), inventory types
-  optminus-cli/    the `optminus` binary
-  optminus-gui/    the `optminus-gui` binary — GPUI + gpui-component
+  openlogi-core/   serializable types, config, paths — no HID, no async
+  openlogi-hid/    hidpp + async-hid glue: enumerate(), inventory types
+  openlogi-cli/    the `openlogi` binary
+  openlogi-gui/    the `openlogi-gui` binary — GPUI + gpui-component
 ```
 
 ## Developing on devenv (macOS)
@@ -128,7 +128,7 @@ expose `libSystem` the way Apple's real linker wants.
 ## Acknowledgments
 
 - **[`hidpp`](https://crates.io/crates/hidpp)** by [@lus](https://github.com/lus)
-  implements the HID++ protocol in Rust. Options− is a consumer; this project
+  implements the HID++ protocol in Rust. OpenLogi is a consumer; this project
   would not be a weekend's work without it.
 - **[Solaar](https://github.com/pwr-Solaar/Solaar)** is the de-facto reference
   for Logitech HID++ on Linux and a source of device-specific knowledge that

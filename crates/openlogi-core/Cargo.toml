@@ -1,12 +1,12 @@
 [package]
-name = "optminus-core"
+name = "openlogi-core"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 authors.workspace = true
-description = "Core types, config, and paths for OptMinus. No I/O specifics."
+description = "Core types, config, and paths for OpenLogi. No I/O specifics."
 
 [dependencies]
 # Serde + TOML: config persistence is the only I/O this crate does.

@@ -14,10 +14,10 @@ use gpui::{
     Animation, AnimationExt as _, AnyElement, BorrowAppContext as _, BoxShadow, Context, Entity,
     FontWeight, InteractiveElement, IntoElement, ParentElement, Render,
     StatefulInteractiveElement as _, Styled, Window, div, ease_in_out, point,
-    prelude::FluentBuilder as _, px, pulsating_between, rgb,
+    prelude::FluentBuilder as _, pulsating_between, px, rgb,
 };
 use gpui_component::{h_flex, v_flex};
-use optminus_core::device::{
+use openlogi_core::device::{
     BatteryInfo, BatteryStatus, DeviceInventory, DeviceKind, PairedDevice,
 };
 
@@ -91,9 +91,12 @@ impl Render for DeviceCarousel {
             .gap_3()
             .items_center()
             .overflow_x_scroll()
-            .children(self.cards.iter().enumerate().map(|(idx, card)| {
-                card_view(idx, card, idx == selected, &entity)
-            }))
+            .children(
+                self.cards
+                    .iter()
+                    .enumerate()
+                    .map(|(idx, card)| card_view(idx, card, idx == selected, &entity)),
+            )
     }
 }
 
@@ -155,7 +158,10 @@ fn card_view(
 /// connecting. Animation is driven by `with_animation` and runs continuously
 /// while the card is in the tree.
 fn status_dot(status: Status) -> AnyElement {
-    let base = div().size(px(DOT_SIZE)).rounded_full().bg(rgb(status.color()));
+    let base = div()
+        .size(px(DOT_SIZE))
+        .rounded_full()
+        .bg(rgb(status.color()));
     match status {
         Status::Offline => base.into_any_element(),
         Status::Connecting => base

@@ -1,4 +1,4 @@
-//! HID++ device discovery and inspection for OptMinus.
+//! HID++ device discovery and inspection for OpenLogi.
 //!
 //! Wraps the `hidpp` crate over `async-hid` as the transport. The only public
 //! entry point is [`inventory::enumerate`].

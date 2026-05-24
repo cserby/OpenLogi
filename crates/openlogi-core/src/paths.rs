@@ -1,8 +1,8 @@
 //! Per-OS application data directories.
 //!
-//! On macOS this resolves to `~/Library/Application Support/dev.OptMinus.optminus/`,
-//! on Linux to `$XDG_CONFIG_HOME/optminus/` (default `~/.config/optminus/`),
-//! and on Windows to `%APPDATA%\OptMinus\optminus\config\`.
+//! On macOS this resolves to `~/Library/Application Support/dev.OpenLogi.openlogi/`,
+//! on Linux to `$XDG_CONFIG_HOME/openlogi/` (default `~/.config/openlogi/`),
+//! and on Windows to `%APPDATA%\OpenLogi\openlogi\config\`.
 
 use std::path::PathBuf;
 
@@ -16,7 +16,7 @@ pub enum PathsError {
 }
 
 fn project_dirs() -> Result<ProjectDirs, PathsError> {
-    ProjectDirs::from("dev", "OptMinus", "optminus").ok_or(PathsError::HomeNotFound)
+    ProjectDirs::from("dev", "OpenLogi", "openlogi").ok_or(PathsError::HomeNotFound)
 }
 
 pub fn config_dir() -> Result<PathBuf, PathsError> {

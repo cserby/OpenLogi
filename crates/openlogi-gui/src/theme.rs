@@ -1,4 +1,4 @@
-//! Color, radius, and spacing constants used by the OptMinus UI.
+//! Color, radius, and spacing constants used by the OpenLogi UI.
 //!
 //! Centralized here so phase work doesn't drift away from the Logi Options+
 //! inspired palette. Anything pulled from `cx.theme()` still wins — these are

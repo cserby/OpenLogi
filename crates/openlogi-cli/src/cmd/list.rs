@@ -1,12 +1,12 @@
 use anyhow::{Context, Result};
 use clap::Args;
-use optminus_core::device::{BatteryInfo, DeviceInventory, PairedDevice};
+use openlogi_core::device::{BatteryInfo, DeviceInventory, PairedDevice};
 
 #[derive(Debug, Args)]
 pub struct ListArgs {}
 
 pub async fn run(_args: ListArgs) -> Result<()> {
-    let inventories = optminus_hid::enumerate()
+    let inventories = openlogi_hid::enumerate()
         .await
         .context("failed to enumerate HID++ devices")?;
 

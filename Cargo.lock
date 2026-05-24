@@ -4170,26 +4170,20 @@ dependencies = [
 ]
 
 [[package]]
-name = "option-ext"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "04744f49eae99ab78e0d5c0b603ab218f515ea8cfe5a456d7629ad883a3b6e7d"
-
-[[package]]
-name = "optminus-cli"
+name = "openlogi-cli"
 version = "0.0.1"
 dependencies = [
  "anyhow",
  "clap",
- "optminus-core",
- "optminus-hid",
+ "openlogi-core",
+ "openlogi-hid",
  "tokio",
  "tracing",
  "tracing-subscriber",
 ]
 
 [[package]]
-name = "optminus-core"
+name = "openlogi-core"
 version = "0.0.1"
 dependencies = [
  "directories",
@@ -4200,32 +4194,38 @@ dependencies = [
 ]
 
 [[package]]
-name = "optminus-gui"
+name = "openlogi-gui"
 version = "0.0.1"
 dependencies = [
  "anyhow",
  "gpui",
  "gpui-component",
  "gpui_platform",
- "optminus-core",
- "optminus-hid",
+ "openlogi-core",
+ "openlogi-hid",
  "tokio",
  "tracing",
  "tracing-subscriber",
 ]
 
 [[package]]
-name = "optminus-hid"
+name = "openlogi-hid"
 version = "0.0.1"
 dependencies = [
  "async-hid",
  "futures-lite 2.6.1",
  "hidpp",
- "optminus-core",
+ "openlogi-core",
  "thiserror 2.0.18",
  "tokio",
  "tracing",
 ]
+
+[[package]]
+name = "option-ext"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "04744f49eae99ab78e0d5c0b603ab218f515ea8cfe5a456d7629ad883a3b6e7d"
 
 [[package]]
 name = "ordered-float"

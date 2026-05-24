@@ -1,4 +1,4 @@
-//! Shared types and configuration for OptMinus.
+//! Shared types and configuration for OpenLogi.
 //!
 //! This crate is deliberately I/O-free apart from filesystem reads/writes of
 //! the user config file. It must never depend on `hidpp`, `async-hid`, or any

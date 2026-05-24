@@ -46,15 +46,15 @@
   # Project tasks. Run with `devenv tasks run <name>`, list with
   # `devenv tasks list`. All tasks inherit the env + PATH fixes above.
   tasks = {
-    "optminus:run" = {
+    "openlogi:run" = {
       description = "Run the CLI: enumerate connected Logitech HID++ devices.";
-      exec = "cargo run -p optminus-cli -- list";
+      exec = "cargo run -p openlogi-cli -- list";
     };
-    "optminus:gui" = {
+    "openlogi:gui" = {
       description = "Run the GPUI desktop window.";
-      exec = "cargo run -p optminus-gui";
+      exec = "cargo run -p openlogi-gui";
     };
-    "optminus:check" = {
+    "openlogi:check" = {
       description = "Pre-commit check: fmt --check, clippy -D warnings, tests. Mirrors CI.";
       exec = ''
         set -e

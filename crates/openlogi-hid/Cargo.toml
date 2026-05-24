@@ -1,15 +1,15 @@
 [package]
-name = "optminus-hid"
+name = "openlogi-hid"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 authors.workspace = true
-description = "HID++ device discovery for OptMinus, wrapping the hidpp crate over async-hid."
+description = "HID++ device discovery for OpenLogi, wrapping the hidpp crate over async-hid."
 
 [dependencies]
-optminus-core = { path = "../optminus-core" }
+openlogi-core = { path = "../openlogi-core" }
 # HID++ protocol implementation (the reason this project exists).
 hidpp = { workspace = true }
 # HID transport. The hidpp crate is transport-agnostic; this is the well-trodden pairing.
