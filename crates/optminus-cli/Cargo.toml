@@ -1,0 +1,29 @@
+[package]
+name = "optminus-cli"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "OptMinus command-line interface."
+
+[[bin]]
+name = "optminus"
+path = "src/main.rs"
+
+[dependencies]
+optminus-core = { path = "../optminus-core" }
+optminus-hid = { path = "../optminus-hid" }
+# Command-line parsing with derive.
+clap = { workspace = true }
+# Single error sink for the binary; libraries use thiserror.
+anyhow = { workspace = true }
+# Tokio runtime: drives the async HID enumeration. current-thread flavor is enough for v0.0.1.
+tokio = { workspace = true, features = ["rt", "macros", "sync", "time"] }
+# Tracing + a printing subscriber for human-readable stderr output.
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+
+[lints]
+workspace = true

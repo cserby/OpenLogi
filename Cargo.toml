@@ -1,6 +1,50 @@
-[package]
-name = "optminus"
-version = "0.1.0"
-edition = "2024"
+[workspace]
+resolver = "3"
+members = [
+    "crates/optminus-core",
+    "crates/optminus-hid",
+    "crates/optminus-cli",
+]
 
-[dependencies]
+[workspace.package]
+version = "0.0.1"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/AprilNEA/OptMinus"
+authors = ["AprilNEA <dev@aprilnea.me>"]
+description = "Lightweight, local-first alternative to Logitech Options+ for HID++ devices"
+
+[workspace.dependencies]
+hidpp = "0.2"
+async-hid = "0.4"
+tokio = { version = "1", default-features = false, features = ["rt", "macros", "sync", "time"] }
+futures-lite = "2"
+serde = { version = "1", features = ["derive"] }
+toml = "0.8"
+clap = { version = "4", features = ["derive"] }
+anyhow = "1"
+thiserror = "2"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", default-features = false, features = ["fmt", "env-filter"] }
+directories = "5"
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[workspace.lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+unwrap_used = "warn"
+expect_used = "warn"
+# Two pedantic lints we deliberately turn off:
+#   missing_errors_doc — the public surface is small enough that the type
+#     already documents the failure modes; per-function `# Errors` prose rots.
+#   doc_markdown — backticking every CamelCase identifier in prose hurts
+#     readability more than it helps.
+missing_errors_doc = "allow"
+doc_markdown = "allow"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = "symbols"
