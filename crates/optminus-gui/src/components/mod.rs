@@ -4,4 +4,5 @@
 //! self-contained entity or render-once element; cross-component coordination
 //! happens through [`crate::state::AppState`].
 
+pub mod device_carousel;
 pub mod dpi_panel;

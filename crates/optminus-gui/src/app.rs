@@ -1,9 +1,9 @@
-//! Root view: header (device carousel placeholder), body (mouse model area
-//! and configuration panel), footer (settings / version).
+//! Root view: header (device carousel), body (mouse model area and
+//! configuration panel), footer (settings / version).
 //!
-//! The body currently hosts the Phase 2 [`DpiPanel`] while the surrounding
-//! layout (mouse model + multi-tab config panel) is being filled in across
-//! the remaining UI.md phases.
+//! Body currently hosts the Phase 2 [`DpiPanel`]; the surrounding layout
+//! (mouse model + multi-tab config) is being filled in across the remaining
+//! UI.md phases.
 
 use gpui::{
     AppContext as _, Context, Entity, FontWeight, IntoElement, ParentElement, Render, Styled,
@@ -12,28 +12,25 @@ use gpui::{
 use gpui_component::{ActiveTheme, h_flex, v_flex};
 use optminus_core::device::DeviceInventory;
 
+use crate::components::device_carousel::DeviceCarousel;
 use crate::components::dpi_panel::DpiPanel;
 use crate::state::AppState;
-use crate::theme::{BG_DARK, BORDER, FOOTER_H, HEADER_H, TEXT_MUTED, TEXT_PRIMARY};
+use crate::theme::{BG_DARK, BORDER, FOOTER_H, HEADER_H, TEXT_PRIMARY};
 
-/// Application root view.
 pub struct AppView {
-    /// Inventory snapshot from the startup HID probe. Will feed the carousel
-    /// in Phase 3; held here so the data survives the restructuring.
-    inventories: Vec<DeviceInventory>,
+    carousel: Entity<DeviceCarousel>,
     dpi_panel: Entity<DpiPanel>,
 }
 
 impl AppView {
-    pub fn new(inventories: Vec<DeviceInventory>, cx: &mut Context<Self>) -> Self {
-        // The DPI panel reads its initial value from AppState, so seed the
-        // global before spawning it.
+    pub fn new(inventories: &[DeviceInventory], cx: &mut Context<Self>) -> Self {
         if !cx.has_global::<AppState>() {
             cx.set_global(AppState::new());
         }
+        let carousel = cx.new(|cx| DeviceCarousel::new(inventories, cx));
         let dpi_panel = cx.new(DpiPanel::new);
         Self {
-            inventories,
+            carousel,
             dpi_panel,
         }
     }
@@ -45,19 +42,18 @@ impl Render for AppView {
             .size_full()
             .bg(rgb(BG_DARK))
             .text_color(rgb(TEXT_PRIMARY))
-            .child(header(self.inventories.len()))
+            .child(header(&self.carousel))
             .child(body(&self.dpi_panel))
             .child(footer(cx))
     }
 }
 
-fn header(device_count: usize) -> impl IntoElement {
-    // Placeholder strip — Phase 3 will replace this with the carousel proper.
+fn header(carousel: &Entity<DeviceCarousel>) -> impl IntoElement {
     h_flex()
         .h(px(HEADER_H))
         .w_full()
         .px_5()
-        .gap_3()
+        .gap_4()
         .items_center()
         .border_b_1()
         .border_color(rgb(BORDER))
@@ -67,12 +63,7 @@ fn header(device_count: usize) -> impl IntoElement {
                 .font_weight(FontWeight::SEMIBOLD)
                 .child("Options−"),
         )
-        .child(
-            div()
-                .text_sm()
-                .text_color(rgb(TEXT_MUTED))
-                .child(format!("{device_count} receivers")),
-        )
+        .child(div().flex_1().min_w_0().child(carousel.clone()))
 }
 
 fn body(dpi_panel: &Entity<DpiPanel>) -> impl IntoElement {

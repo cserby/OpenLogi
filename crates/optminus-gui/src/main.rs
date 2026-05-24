@@ -47,7 +47,7 @@ fn main() -> Result<()> {
                 reason = "failure to open the main window is fatal; nothing useful to recover to"
             )]
             cx.open_window(options, move |window, cx| {
-                let view = cx.new(|cx| AppView::new(inventories, cx));
+                let view = cx.new(|cx| AppView::new(&inventories, cx));
                 cx.new(|cx| Root::new(view, window, cx).bg(cx.theme().background))
             })
             .expect("opening the main window should not fail");
