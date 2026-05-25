@@ -1,11 +1,17 @@
-//! On-disk device asset cache.
+//! Device asset cache with a two-tier lookup chain.
 //!
-//! `~/Library/Application Support/dev.OpenLogi.openlogi/assets/<depot>/`
-//! holds one copy of each device's `front_core.png` + `core_metadata.json`.
-//! At startup [`sync::sync`] fetches missing or stale files from
-//! `assets.openlogi.org`; at render time [`AssetCache::resolve`] reads
-//! whatever's on disk. Network failures fall through to the synthetic
-//! silhouette.
+//! At render time [`AssetCache::resolve`] probes (in order):
+//!
+//! 1. The macOS app bundle's `Contents/Resources/assets/` — populated at
+//!    packaging time by `scripts/sync_bundle_assets.py` and shipped with
+//!    every release. Zero network at end-user runtime.
+//! 2. The per-user cache at `~/Library/Application Support/dev.OpenLogi
+//!    .openlogi/assets/` — populated by [`sync::sync`] when it runs (debug
+//!    builds and the bundle-missing safety net).
+//!
+//! Either tier missing the requested files falls through to the next, and
+//! ultimately to the synthetic silhouette. The write side ([`sync::sync`])
+//! always targets the user cache — the bundle is read-only.
 
 pub mod index;
 pub mod metadata;
@@ -20,12 +26,8 @@ use tracing::{debug, warn};
 use self::index::{DeviceEntry, Index};
 use self::metadata::Metadata;
 
-/// Default asset registry filename inside the cache root.
 const INDEX_FILE: &str = "index.json";
 
-/// Resolved set of files for one device. Either both `image_path` and
-/// `metadata` were loadable from cache, or the cache hit failed and the
-/// caller falls back to its synthetic art.
 pub struct ResolvedAsset {
     pub depot: String,
     pub display_name: String,
@@ -34,34 +36,50 @@ pub struct ResolvedAsset {
 }
 
 pub struct AssetCache {
-    root: PathBuf,
+    /// Read-time search order. Bundle root (if present) comes first so
+    /// release builds never touch the user cache; the user cache comes
+    /// second so `sync::sync` writes are immediately visible.
+    read_roots: Vec<PathBuf>,
+    /// Where [`sync::sync`] is allowed to write. Always the per-user dir
+    /// — the bundle is read-only inside the signed `.app`.
+    write_root: PathBuf,
+    /// `true` when a populated bundle root was discovered; release builds
+    /// skip the network sync in that case.
+    has_bundle: bool,
     index: Option<Index>,
 }
 
 impl AssetCache {
     pub fn new() -> Self {
-        let root = cache_root();
-        let index = load_index(&root);
-        Self { root, index }
+        let write_root = user_cache_root();
+        let bundle = bundle_assets_root();
+        let has_bundle = bundle.is_some();
+        let mut read_roots = Vec::with_capacity(2);
+        if let Some(b) = bundle {
+            debug!(path = %b.display(), "bundle assets root detected");
+            read_roots.push(b);
+        }
+        read_roots.push(write_root.clone());
+        let index = load_index(&read_roots);
+        Self {
+            read_roots,
+            write_root,
+            has_bundle,
+            index,
+        }
     }
 
-    /// Where on disk per-device files live. Public so the user can
-    /// populate it from the assets repo.
+    /// Where [`sync::sync`] writes. Public so the sync module can build
+    /// destination paths.
     pub fn cache_root(&self) -> &Path {
-        &self.root
+        &self.write_root
     }
 
-    /// Look up the connected device's depot via its HID++ model info, then
-    /// load the cached `front_core.png` + `core_metadata.json` if present.
-    ///
-    /// Match order:
-    /// 1. `OPENLOGI_FORCE_DEPOT` env override (dev convenience).
-    /// 2. Strict `{ext:x}{bolt_pid:04x}` against registry `modelId`.
-    /// 3. Suffix match on the bare bolt PID — covers devices like MX
-    ///    Master 4 where Logi's registry prefix doesn't line up with
-    ///    HID++ `extended_model_id` (registry: `"2b042"`, device reports
-    ///    `ext=01 + b042`). Safe in practice because Logitech reserves
-    ///    PID ranges per product family.
+    /// `true` when the binary is running from a populated app bundle.
+    pub fn has_bundle_root(&self) -> bool {
+        self.has_bundle
+    }
+
     pub fn resolve(&self, model: &DeviceModelInfo) -> Option<ResolvedAsset> {
         let index = self.index.as_ref()?;
         let (depot, entry) = resolve_in_index(index, model)?;
@@ -69,26 +87,30 @@ impl AssetCache {
     }
 
     fn load_files(&self, depot: &str, entry: &DeviceEntry) -> Option<ResolvedAsset> {
-        let dir = self.root.join(depot);
-        let image_path = dir.join("front_core.png");
-        let meta_path = dir.join("core_metadata.json");
-        if !image_path.exists() || !meta_path.exists() {
-            debug!(depot, "asset cache miss — files not populated locally");
-            return None;
-        }
-        let metadata = match Metadata::load_from(&meta_path) {
-            Ok(m) => m,
-            Err(e) => {
-                warn!(depot, error = ?e, "failed to parse core_metadata.json");
-                return None;
+        for root in &self.read_roots {
+            let dir = root.join(depot);
+            let image_path = dir.join("front_core.png");
+            let meta_path = dir.join("core_metadata.json");
+            if !image_path.exists() || !meta_path.exists() {
+                continue;
             }
-        };
-        Some(ResolvedAsset {
-            depot: depot.to_string(),
-            display_name: entry.display_name.clone(),
-            image_path,
-            metadata,
-        })
+            let metadata = match Metadata::load_from(&meta_path) {
+                Ok(m) => m,
+                Err(e) => {
+                    warn!(depot, root = %root.display(), error = ?e, "failed to parse core_metadata.json");
+                    continue;
+                }
+            };
+            debug!(depot, root = %root.display(), "asset hit");
+            return Some(ResolvedAsset {
+                depot: depot.to_string(),
+                display_name: entry.display_name.clone(),
+                image_path,
+                metadata,
+            });
+        }
+        debug!(depot, "asset cache miss across all roots");
+        None
     }
 }
 
@@ -98,34 +120,49 @@ impl Default for AssetCache {
     }
 }
 
-/// Cache root resolution. Mirrors `openlogi_core::paths::config_dir` but
-/// nested under `assets/` to keep it separate from user config files.
-fn cache_root() -> PathBuf {
+/// Per-user writable cache root. Mirrors `openlogi_core::paths::config_dir`
+/// but nested under `assets/` to keep it separate from user config files.
+fn user_cache_root() -> PathBuf {
     ProjectDirs::from("dev", "OpenLogi", "openlogi").map_or_else(
         || PathBuf::from("./assets"),
         |d| d.data_dir().join("assets"),
     )
 }
 
-fn load_index(root: &Path) -> Option<Index> {
-    let path = root.join(INDEX_FILE);
-    if !path.exists() {
-        debug!(
-            ?path,
-            "no asset index — using synthetic silhouette for all devices"
-        );
-        return None;
-    }
-    match Index::load_from(&path) {
-        Ok(idx) => {
-            debug!(devices = idx.devices.len(), "asset index loaded");
-            Some(idx)
+/// Read-only root pointing inside the macOS `.app` bundle when the binary
+/// is launched from one: `<exe_dir>/../Resources/assets/`. Returns `None`
+/// for plain `cargo run`, Linux/Windows builds, or any layout without that
+/// structure.
+fn bundle_assets_root() -> Option<PathBuf> {
+    let exe = std::env::current_exe().ok()?;
+    let candidate = exe.parent()?.parent()?.join("Resources").join("assets");
+    candidate.is_dir().then_some(candidate)
+}
+
+/// Walk read roots looking for the first parseable `index.json`. Bundle
+/// wins over user cache so a release-time snapshot stays authoritative.
+fn load_index(roots: &[PathBuf]) -> Option<Index> {
+    for root in roots {
+        let path = root.join(INDEX_FILE);
+        if !path.exists() {
+            continue;
         }
-        Err(e) => {
-            warn!(error = ?e, "failed to parse asset index");
-            None
+        match Index::load_from(&path) {
+            Ok(idx) => {
+                debug!(
+                    devices = idx.devices.len(),
+                    root = %root.display(),
+                    "asset index loaded"
+                );
+                return Some(idx);
+            }
+            Err(e) => {
+                warn!(error = ?e, root = %root.display(), "failed to parse asset index");
+            }
         }
     }
+    debug!("no asset index found — using synthetic silhouette for all devices");
+    None
 }
 
 /// Match a connected device's HID++ model info against a loaded index,
@@ -168,8 +205,6 @@ pub(crate) fn resolve_in_index<'a>(
     Some(hit)
 }
 
-/// Strict registry-style candidates: `extended_model_id + bolt_pid`, e.g.
-/// `ext=0x06 + 0xb023 → "6b023"`. First match wins.
 fn strict_candidates(model: &DeviceModelInfo) -> Vec<String> {
     model
         .model_ids
@@ -179,8 +214,6 @@ fn strict_candidates(model: &DeviceModelInfo) -> Vec<String> {
         .collect()
 }
 
-/// Fallback candidates: just the bare bolt PID, no prefix. Lets us match
-/// registry entries whose leading byte isn't HID++'s `extended_model_id`.
 fn suffix_candidates(model: &DeviceModelInfo) -> Vec<String> {
     model
         .model_ids

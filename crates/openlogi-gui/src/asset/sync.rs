@@ -23,6 +23,26 @@ use super::index::{DeviceEntry, Index};
 /// so dev / staging deployments can point elsewhere without a rebuild.
 pub const DEFAULT_BASE: &str = "https://assets.openlogi.org";
 
+/// Whether the startup HTTP sync should run on this launch.
+///
+/// Policy:
+/// - `OPENLOGI_SYNC=off` → never run.
+/// - `OPENLOGI_SYNC=on` → always run.
+/// - Debug builds → run (so devs see registry updates immediately).
+/// - Release builds → run only when the app bundle didn't ship assets
+///   (safety net for malformed bundles or hand-built binaries).
+pub fn should_run(has_bundle: bool) -> bool {
+    match std::env::var("OPENLOGI_SYNC").ok().as_deref() {
+        Some("off" | "false" | "0") => return false,
+        Some("on" | "true" | "1") => return true,
+        _ => {}
+    }
+    if cfg!(debug_assertions) {
+        return true;
+    }
+    !has_bundle
+}
+
 /// Files the GUI actually opens. We only fetch these; the rest of each
 /// depot stays remote until a feature needs it.
 const FETCH_FILES: &[&str] = &["front_core.png", "core_metadata.json"];

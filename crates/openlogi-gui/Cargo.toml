@@ -38,3 +38,24 @@ sha2 = { workspace = true }
 
 [lints]
 workspace = true
+
+# cargo-bundle config. Run `python3 scripts/sync_bundle_assets.py` to
+# populate `assets/` from assets.openlogi.org, then `cargo bundle
+# --release` to produce `target/release/bundle/osx/OpenLogi.app` with
+# the assets baked into `Contents/Resources/assets/`.
+#
+# `resources` paths are resolved relative to this manifest; the named
+# directory's contents are copied verbatim under `Resources/`.
+[package.metadata.bundle]
+name = "OpenLogi"
+identifier = "dev.openlogi.openlogi"
+version = "0.0.1"
+category = "public.app-category.utilities"
+short_description = "Lightweight local-first companion for Logitech HID++ peripherals."
+long_description = """\
+OpenLogi talks to Logitech HID++ mice and keyboards directly — no \
+cloud account, no telemetry, no auto-update poller. Plain TOML config, \
+single binary, ships with device renders bundled.
+"""
+osx_minimum_system_version = "13.0"
+resources = ["assets"]

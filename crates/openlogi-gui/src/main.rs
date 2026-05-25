@@ -30,14 +30,19 @@ fn main() -> Result<()> {
     let inventories = enumerate_blocking().context("HID enumeration failed")?;
 
     // Refresh / fetch device assets up front so the AssetCache the GUI
-    // reads finds the right files on disk. The server URL is overridable
-    // via OPENLOGI_ASSETS for staging / dev.
-    let server = std::env::var("OPENLOGI_ASSETS")
-        .unwrap_or_else(|_| asset::sync::DEFAULT_BASE.to_string());
-    let models = collect_models(&inventories);
-    if let Err(e) = asset::sync::sync(&server, &models) {
-        warn!(error = ?e, "asset sync raised — continuing with whatever's cached");
+    // reads finds the right files on disk. Release builds normally skip
+    // the sync because the .app ships pre-populated; debug builds always
+    // run it. Either default is overridable via `OPENLOGI_SYNC=on/off`.
+    let probe_cache = asset::AssetCache::new();
+    if asset::sync::should_run(probe_cache.has_bundle_root()) {
+        let server = std::env::var("OPENLOGI_ASSETS")
+            .unwrap_or_else(|_| asset::sync::DEFAULT_BASE.to_string());
+        let models = collect_models(&inventories);
+        if let Err(e) = asset::sync::sync(&server, &models) {
+            warn!(error = ?e, "asset sync raised — continuing with whatever's cached");
+        }
     }
+    drop(probe_cache);
 
     gpui_platform::application().run(move |cx| {
         gpui_component::init(cx);
