@@ -33,7 +33,7 @@ pub struct Index {
     pub devices: HashMap<String, DeviceEntry>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct DeviceEntry {
     #[serde(rename = "modelId")]
     pub model_id: String,
@@ -45,7 +45,7 @@ pub struct DeviceEntry {
     pub files: Vec<FileEntry>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct FileEntry {
     pub name: String,
     pub sha256: String,

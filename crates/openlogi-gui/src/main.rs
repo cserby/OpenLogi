@@ -18,7 +18,8 @@ use gpui::{
     px,
 };
 use gpui_component::{ActiveTheme, Root};
-use openlogi_core::device::DeviceInventory;
+use openlogi_core::device::{DeviceInventory, DeviceModelInfo};
+use tracing::warn;
 use tracing_subscriber::EnvFilter;
 
 use crate::app::AppView;
@@ -27,6 +28,16 @@ fn main() -> Result<()> {
     init_tracing();
 
     let inventories = enumerate_blocking().context("HID enumeration failed")?;
+
+    // Refresh / fetch device assets up front so the AssetCache the GUI
+    // reads finds the right files on disk. The server URL is overridable
+    // via OPENLOGI_ASSETS for staging / dev.
+    let server = std::env::var("OPENLOGI_ASSETS")
+        .unwrap_or_else(|_| asset::sync::DEFAULT_BASE.to_string());
+    let models = collect_models(&inventories);
+    if let Err(e) = asset::sync::sync(&server, &models) {
+        warn!(error = ?e, "asset sync raised — continuing with whatever's cached");
+    }
 
     gpui_platform::application().run(move |cx| {
         gpui_component::init(cx);
@@ -75,4 +86,14 @@ fn enumerate_blocking() -> Result<Vec<DeviceInventory>> {
         .context("tokio runtime init")?;
     rt.block_on(openlogi_hid::enumerate())
         .context("openlogi_hid::enumerate")
+}
+
+/// Flatten every paired device's HID++ model snapshot — that's what the
+/// asset sync feeds into the registry lookup.
+fn collect_models(inventories: &[DeviceInventory]) -> Vec<DeviceModelInfo> {
+    inventories
+        .iter()
+        .flat_map(|inv| inv.paired.iter())
+        .filter_map(|p| p.model_info)
+        .collect()
 }

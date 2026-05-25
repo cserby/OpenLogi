@@ -31,6 +31,10 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 # Per-user cache directory resolution (mirrors openlogi-core/paths.rs).
 directories = { workspace = true }
+# Blocking HTTP for the startup asset sync against assets.openlogi.org.
+ureq = { workspace = true }
+# SHA-256 for asset cache validation.
+sha2 = { workspace = true }
 
 [lints]
 workspace = true
