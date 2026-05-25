@@ -54,4 +54,11 @@ cloud account, no telemetry, no auto-update poller. Plain TOML config, \
 single binary, ships with device renders bundled.
 """
 osx_minimum_system_version = "13.0"
-resources = ["assets"]
+# Glob resolved by cargo-bundle's process cwd, NOT the manifest dir
+# (cargo-bundle 0.10 has no chdir built in). Run from this crate's
+# directory so the relative path lines up with Resources/assets/:
+#
+#     cd crates/openlogi-gui && cargo bundle --release
+#
+# The devenv `openlogi:bundle` task wraps that.
+resources = ["assets/**/*"]

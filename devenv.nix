@@ -63,5 +63,30 @@
         cargo test --workspace
       '';
     };
+    "openlogi:assets" = {
+      description = "Pull every device's bundle assets from assets.openlogi.org.";
+      exec = "cargo run -p openlogi-cli --release -- assets sync";
+    };
+    "openlogi:bundle" = {
+      description = "Build OpenLogi.app with assets baked into Resources/.";
+      # Forces Xcode envs that the Nix apple-sdk hook otherwise overrides
+      # (Metal toolchain + libSystem). cargo-bundle 0.10 resolves
+      # `resources` globs against the process cwd, hence the cd into the
+      # crate dir before invoking.
+      exec = ''
+        set -e
+        export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
+        export SDKROOT=$(/usr/bin/xcrun --sdk macosx --show-sdk-path)
+        if ! command -v cargo-bundle >/dev/null; then
+          export CARGO_TARGET_AARCH64_APPLE_DARWIN_LINKER=/usr/bin/cc
+          cargo install cargo-bundle --locked
+        fi
+        cargo run -p openlogi-cli --release -- assets sync
+        cd crates/openlogi-gui
+        cargo bundle --release
+        echo
+        echo "Bundle ready: target/release/bundle/osx/OpenLogi.app"
+      '';
+    };
   };
 }
