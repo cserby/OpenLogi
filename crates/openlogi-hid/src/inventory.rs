@@ -205,11 +205,20 @@ async fn probe_direct(
     const DIRECT_DEVICE_INDEX: u8 = 0xff;
 
     let (battery, model_info) = probe_features(&channel, DIRECT_DEVICE_INDEX).await;
-    if battery.is_none() && model_info.is_none() {
+    // Require BatteryInfo before treating this as a direct-paired device.
+    // Bolt receivers also answer HID++ at slot 0xff with DeviceInformation
+    // (their own metadata) but do not expose UnifiedBattery — battery
+    // therefore distinguishes a peripheral from a receiver's secondary
+    // HID interface. Without this guard, a Bolt setup ends up with two
+    // entries in `device_list`: the real mouse (via the Bolt path) and a
+    // fake "direct device" pointing at the receiver, which sits at
+    // index 0 and steals every DPI / SmartShift write attempt.
+    if battery.is_none() {
         debug!(
             vid = format_args!("{:04x}", info.vendor_id),
             pid = format_args!("{:04x}", info.product_id),
-            "channel did not answer HID++ at slot 0xff — skipping"
+            has_model = model_info.is_some(),
+            "no battery at slot 0xff — likely a receiver secondary interface; skipping"
         );
         return None;
     }
