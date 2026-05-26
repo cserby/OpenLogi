@@ -39,12 +39,12 @@ use std::path::Path;
 
 use serde::Deserialize;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct Metadata {
     pub images: Vec<ImageEntry>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct ImageEntry {
     pub key: String,
     pub origin: Origin,
@@ -58,7 +58,7 @@ pub struct Origin {
     pub height: u32,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct Assignment {
     #[serde(rename = "slotName")]
     pub slot_name: String,

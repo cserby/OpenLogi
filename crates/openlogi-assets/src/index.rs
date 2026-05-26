@@ -80,12 +80,7 @@ impl Index {
         let suffix_lower = suffix.to_ascii_lowercase();
         self.devices
             .iter()
-            .find(|(_, entry)| {
-                entry
-                    .model_id
-                    .to_ascii_lowercase()
-                    .ends_with(&suffix_lower)
-            })
+            .find(|(_, entry)| entry.model_id.to_ascii_lowercase().ends_with(&suffix_lower))
             .map(|(depot, entry)| (depot.as_str(), entry))
     }
 }

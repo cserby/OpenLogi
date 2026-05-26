@@ -25,3 +25,8 @@ tempfile = "3"
 
 [lints]
 workspace = true
+
+[target.'cfg(target_os = "macos")'.dependencies]
+# macOS key-event synthesis used in Action::execute on macOS.
+# `highsierra` feature unlocks CGEventCreateScrollWheelEvent2 binding.
+core-graphics = { version = "0.25.0", features = ["highsierra"] }

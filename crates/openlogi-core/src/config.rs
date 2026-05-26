@@ -28,6 +28,11 @@ pub const SCHEMA_VERSION: u32 = 1;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
     pub schema_version: u32,
+    /// HID++ `config_key` of the carousel-selected device, persisted so a
+    /// restart restores the last view rather than always landing on the
+    /// first paired device. `None` means "fall back to the first device".
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub selected_device: Option<String>,
     #[serde(default)]
     pub devices: BTreeMap<String, DeviceConfig>,
 }
@@ -36,6 +41,7 @@ impl Default for Config {
     fn default() -> Self {
         Self {
             schema_version: SCHEMA_VERSION,
+            selected_device: None,
             devices: BTreeMap::new(),
         }
     }
@@ -88,11 +94,10 @@ impl Config {
     pub fn load_from_path(path: &Path) -> Result<Self, ConfigError> {
         match fs::read_to_string(path) {
             Ok(text) => {
-                let config: Self =
-                    toml::from_str(&text).map_err(|source| ConfigError::Parse {
-                        path: path.to_path_buf(),
-                        source,
-                    })?;
+                let config: Self = toml::from_str(&text).map_err(|source| ConfigError::Parse {
+                    path: path.to_path_buf(),
+                    source,
+                })?;
                 if config.schema_version != SCHEMA_VERSION {
                     return Err(ConfigError::UnsupportedSchemaVersion {
                         path: path.to_path_buf(),
@@ -150,6 +155,18 @@ impl Config {
             .button_bindings
             .insert(button, action);
     }
+
+    /// HID++ config key of the carousel-selected device, if any.
+    #[must_use]
+    pub fn selected_device(&self) -> Option<&str> {
+        self.selected_device.as_deref()
+    }
+
+    /// Update the carousel-selected device. Pass `None` to clear the
+    /// selection (e.g. when the previously-selected device disappears).
+    pub fn set_selected_device(&mut self, key: Option<String>) {
+        self.selected_device = key;
+    }
 }
 
 fn write_atomic(path: &Path, bytes: &[u8]) -> io::Result<()> {
@@ -182,6 +199,7 @@ fn write_atomic(path: &Path, bytes: &[u8]) -> io::Result<()> {
 }
 
 #[cfg(test)]
+#[allow(clippy::expect_used, reason = "expect/unwrap are idiomatic in tests")]
 mod tests {
     use super::*;
 
@@ -257,6 +275,27 @@ mod tests {
             err,
             ConfigError::UnsupportedSchemaVersion { found: 99, .. }
         ));
+    }
+
+    #[test]
+    fn selected_device_roundtrips() {
+        let mut cfg = Config::default();
+        assert_eq!(cfg.selected_device(), None);
+        cfg.set_selected_device(Some("2b042".into()));
+        let parsed = write_and_read(&cfg);
+        assert_eq!(parsed.selected_device(), Some("2b042"));
+    }
+
+    #[test]
+    fn cleared_selected_device_omits_field() {
+        let mut cfg = Config::default();
+        cfg.set_selected_device(Some("2b042".into()));
+        cfg.set_selected_device(None);
+        let body = toml::to_string_pretty(&cfg).expect("serialize");
+        assert!(
+            !body.contains("selected_device"),
+            "cleared selection should not appear: {body}"
+        );
     }
 
     #[test]

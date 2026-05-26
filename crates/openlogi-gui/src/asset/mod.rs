@@ -24,7 +24,12 @@ use tracing::{debug, warn};
 
 const INDEX_FILE: &str = "index.json";
 
+#[derive(Debug, Clone)]
 pub struct ResolvedAsset {
+    #[allow(
+        dead_code,
+        reason = "depot label will be surfaced in the carousel tooltip (P0.4+)"
+    )]
     pub depot: String,
     pub display_name: String,
     pub image_path: PathBuf,
@@ -99,9 +104,8 @@ impl AssetCache {
             // extended_model_id byte. Falls back to `front_core.png`
             // when the depot has no manifest, the manifest doesn't list
             // the variant, or the variant PNG isn't cached.
-            let image_name =
-                variant_image_for(&dir, &entry.model_id, model.extended_model_id)
-                    .unwrap_or_else(|| "front_core.png".to_string());
+            let image_name = variant_image_for(&dir, &entry.model_id, model.extended_model_id)
+                .unwrap_or_else(|| "front_core.png".to_string());
             let image_path = dir.join(&image_name);
             if !image_path.exists() {
                 continue;
@@ -145,7 +149,9 @@ fn variant_image_for(dir: &Path, base_model_id: &str, ext: u8) -> Option<String>
         return None;
     }
     let manifest = DepotManifest::load_from(&manifest_path)
-        .map_err(|e| warn!(error = ?e, path = %manifest_path.display(), "depot manifest unreadable"))
+        .map_err(
+            |e| warn!(error = ?e, path = %manifest_path.display(), "depot manifest unreadable"),
+        )
         .ok()?;
     let variant = variant_model_id(base_model_id, ext);
     let src = manifest.device_image_for(&variant)?;

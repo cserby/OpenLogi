@@ -45,11 +45,7 @@ pub enum WriteError {
 /// Re-enumerates each call — opening a HID++ channel is cheap enough
 /// at slider-release cadence, and avoids the complexity of holding a
 /// long-lived session over GPUI's runtime.
-pub async fn set_dpi(
-    receiver_uid: Option<&str>,
-    slot: u8,
-    dpi: u16,
-) -> Result<(), WriteError> {
+pub async fn set_dpi(receiver_uid: Option<&str>, slot: u8, dpi: u16) -> Result<(), WriteError> {
     let backend = HidBackend::default();
     let candidates: Vec<async_hid::Device> = backend
         .enumerate()
@@ -90,11 +86,7 @@ pub async fn set_dpi(
     Err(WriteError::ReceiverNotFound)
 }
 
-async fn push_dpi(
-    channel: &Arc<HidppChannel>,
-    slot: u8,
-    dpi: u16,
-) -> Result<(), WriteError> {
+async fn push_dpi(channel: &Arc<HidppChannel>, slot: u8, dpi: u16) -> Result<(), WriteError> {
     let mut device = Device::new(Arc::clone(channel), slot)
         .await
         .map_err(|_| WriteError::DeviceUnreachable { slot })?;

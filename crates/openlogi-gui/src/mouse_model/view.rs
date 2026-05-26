@@ -13,15 +13,17 @@ use std::time::Duration;
 use gpui::{
     Anchor, Animation, AnimationExt as _, AnyElement, App, Context, ElementId, Entity, FontWeight,
     InteractiveElement, IntoElement, MouseButton, ParentElement, Render, RenderOnce,
-    StatefulInteractiveElement as _, Styled, Window, canvas, div, ease_in_out, hsla, img, px, rgb,
+    StatefulInteractiveElement as _, Styled, Subscription, Window, canvas, div, ease_in_out, hsla,
+    img, px, rgb,
 };
 use gpui_component::{Selectable, popover::Popover, v_flex};
 
 use openlogi_assets::Metadata;
 
-use crate::asset::ResolvedAsset;
 use crate::data::mouse_buttons::{ButtonId, Hotspot, MOUSE_MODEL_SIZE, default_hotspots};
-use crate::mouse_model::leader_lines::{Geometry as LeaderGeometry, Label, Side, paint as paint_leader_lines};
+use crate::mouse_model::leader_lines::{
+    Geometry as LeaderGeometry, Label, Side, paint as paint_leader_lines,
+};
 use crate::mouse_model::picker::action_picker;
 use crate::state::AppState;
 use crate::theme::{ACCENT_BLUE, BORDER, SURFACE_HOVER, TEXT_MUTED, TEXT_PRIMARY};
@@ -47,18 +49,38 @@ const BREATH_AMPLITUDE: f32 = 2.0;
 const ASSET_HOTSPOT: f32 = 56.;
 
 pub struct MouseModelView {
-    hotspots: Vec<Hotspot>,
-    labels: Vec<Label>,
     hovered: Option<ButtonId>,
-    /// Cached device render + dimensions. `None` falls back to the
-    /// shape-based silhouette and [`default_hotspots`] / [`default_labels`].
-    asset: Option<ResolvedAsset>,
-    mouse_w: f32,
-    mouse_h: f32,
+    /// Repaints when the carousel switches devices. Held by value so the
+    /// subscription stays alive for the entity's lifetime.
+    _state_obs: Subscription,
 }
 
 impl MouseModelView {
-    pub fn new(asset: Option<ResolvedAsset>, _cx: &mut Context<Self>) -> Self {
+    pub fn new(cx: &mut Context<Self>) -> Self {
+        let state_obs = cx.observe_global::<AppState>(|_view, cx| cx.notify());
+        Self {
+            hovered: None,
+            _state_obs: state_obs,
+        }
+    }
+}
+
+impl Render for MouseModelView {
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        // Pull everything that depends on the active device out of AppState
+        // up front. Cloning is cheap (small structs, single small Vec) and it
+        // releases the global borrow before the GPUI builders below.
+        let (asset, active, bindings) = cx
+            .try_global::<AppState>()
+            .map(|s| {
+                (
+                    s.current_record().and_then(|r| r.asset.clone()),
+                    s.active_button,
+                    s.button_bindings.clone(),
+                )
+            })
+            .unwrap_or_default();
+
         let (mouse_w, mouse_h) = MOUSE_MODEL_SIZE;
         let (mouse_w, mouse_h, hotspots, labels) = match asset.as_ref() {
             Some(a) => {
@@ -69,38 +91,22 @@ impl MouseModelView {
             }
             None => (mouse_w, mouse_h, default_hotspots(), default_labels()),
         };
-        Self {
-            hotspots,
-            labels,
-            hovered: None,
-            asset,
-            mouse_w,
-            mouse_h,
-        }
-    }
-}
 
-impl Render for MouseModelView {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let (mouse_w, mouse_h) = (self.mouse_w, self.mouse_h);
         let canvas_w = SIDE_W + SIDE_GAP + mouse_w;
         let canvas_h = mouse_h;
         let mouse_left = SIDE_W + SIDE_GAP;
 
-        let active = cx.try_global::<AppState>().and_then(|s| s.active_button);
         let highlight = self.hovered.or(active);
-        let bindings = cx
-            .try_global::<AppState>()
-            .map(|s| s.button_bindings.clone())
-            .unwrap_or_default();
         let view = cx.entity();
         let hovered = self.hovered;
 
-        let hotspots = self.hotspots.clone();
-        let labels = self.labels.clone();
-        let highlight_for_canvas = highlight;
+        // The canvas closure takes ownership of one copy of hotspots/labels;
+        // clone here so the outer label_card and hotspot_popover loops can
+        // iterate over their own.
+        let hotspots_outer = hotspots.clone();
+        let labels_outer = labels.clone();
         let leader_canvas = canvas(
-            move |_bounds, _, _| (hotspots, labels, highlight_for_canvas),
+            move |_bounds, _, _| (hotspots, labels, highlight),
             move |bounds, payload, window, _app| {
                 let (hotspots, labels, highlight) = payload;
                 paint_leader_lines(
@@ -120,7 +126,7 @@ impl Render for MouseModelView {
         .size_full();
 
         // Either the real device image, or the shape-based silhouette.
-        let device_art: AnyElement = match self.asset.as_ref() {
+        let device_art: AnyElement = match asset.as_ref() {
             Some(a) => img(a.image_path.clone())
                 .w(px(mouse_w))
                 .h(px(mouse_h))
@@ -133,7 +139,7 @@ impl Render for MouseModelView {
             .w(px(canvas_w))
             .h(px(canvas_h))
             .child(leader_canvas)
-            .children(self.labels.iter().map(|label| {
+            .children(labels_outer.iter().map(|label| {
                 let binding = bindings
                     .get(&label.id)
                     .map_or("Unbound".to_string(), |a| a.label().to_string());
@@ -153,7 +159,7 @@ impl Render for MouseModelView {
                     .w(px(mouse_w))
                     .h(px(mouse_h))
                     .child(device_art)
-                    .children(self.hotspots.iter().enumerate().map(|(idx, hotspot)| {
+                    .children(hotspots_outer.iter().enumerate().map(|(idx, hotspot)| {
                         hotspot_popover(idx, *hotspot, hovered, active, &view)
                     }))
                     .with_animation(

@@ -16,7 +16,7 @@ use tracing::{info, warn};
 
 use crate::asset::AssetCache;
 use crate::components::device_carousel::DeviceCarousel;
-use crate::components::dpi_panel::{DpiPanel, DpiTarget};
+use crate::components::dpi_panel::DpiPanel;
 use crate::components::gesture_pad::GesturePad;
 use crate::mouse_model::view::MouseModelView;
 use crate::state::AppState;
@@ -32,8 +32,8 @@ pub struct AppView {
 impl AppView {
     pub fn new(inventories: &[DeviceInventory], cx: &mut Context<Self>) -> Self {
         // Load persisted config first so the initial AppState reflects any
-        // saved bindings. A malformed or unreadable file falls back to
-        // defaults with a warning rather than crashing the UI.
+        // saved bindings + the last-selected device. Malformed/unreadable
+        // files fall back to defaults with a warning rather than crash.
         let config = match Config::load_or_default() {
             Ok(c) => c,
             Err(e) => {
@@ -42,56 +42,30 @@ impl AppView {
             }
         };
 
-        // Resolve the device asset for the first online paired device that
-        // reports HID++ model info. Carousel-driven re-resolution comes in
-        // a later phase.
         let cache = AssetCache::new();
-        let asset = inventories
-            .iter()
-            .flat_map(|inv| inv.paired.iter())
-            .find_map(|p| p.model_info.as_ref().and_then(|m| cache.resolve(m)));
-        if let Some(a) = asset.as_ref() {
-            info!(depot = %a.depot, display = %a.display_name, "device asset resolved");
-        } else {
-            info!(
-                root = ?cache.cache_root(),
-                "no asset match for connected devices — using synthetic silhouette"
-            );
-        }
-
-        // Config-persistence key for the active device. Uses the HID++
-        // model+ext identifier so the config file can scope settings per
-        // physical device. Same selection rule as the DPI target below.
-        let device_key = inventories
-            .iter()
-            .flat_map(|inv| inv.paired.iter())
-            .find_map(|p| p.model_info.as_ref().map(|m| m.config_key()));
-        if let Some(k) = device_key.as_deref() {
-            info!(device_key = k, "config bindings scoped to device");
-        }
 
         if !cx.has_global::<AppState>() {
-            cx.set_global(AppState::from_config(config, device_key));
+            cx.set_global(AppState::with_runtime(config, inventories, &cache));
         }
 
-        // Route the DPI slider's HID writes to the first online paired
-        // device that reports a receiver `unique_id`. The carousel
-        // doesn't drive selection yet (v0.0.1 takes whatever's first).
-        let dpi_target = inventories.iter().find_map(|inv| {
-            let receiver_uid = inv.receiver.unique_id.clone()?;
-            let paired = inv.paired.iter().find(|p| p.online)?;
-            Some(DpiTarget {
-                receiver_uid,
-                slot: paired.slot,
-            })
-        });
-        if let Some(t) = dpi_target.as_ref() {
-            info!(slot = t.slot, receiver = %t.receiver_uid, "DPI slider targets device");
+        if let Some(state) = cx.try_global::<AppState>() {
+            if let Some(record) = state.current_record() {
+                info!(
+                    device_key = %record.config_key,
+                    display = %record.display_name,
+                    "initial device selected"
+                );
+            } else {
+                info!(
+                    root = ?cache.cache_root(),
+                    "no devices with HID++ model info — using synthetic silhouette"
+                );
+            }
         }
 
         let carousel = cx.new(|cx| DeviceCarousel::new(inventories, cx));
-        let mouse_model = cx.new(|cx| MouseModelView::new(asset, cx));
-        let dpi_panel = cx.new(|cx| DpiPanel::new(dpi_target, cx));
+        let mouse_model = cx.new(MouseModelView::new);
+        let dpi_panel = cx.new(DpiPanel::new);
         let gesture_pad = cx.new(GesturePad::new);
         Self {
             carousel,

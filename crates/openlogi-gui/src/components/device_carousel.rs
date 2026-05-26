@@ -121,7 +121,11 @@ fn card_view(
         .bg(rgb(SURFACE))
         .hover(|s| s.bg(rgb(SURFACE_HOVER)))
         .on_click(move |_event, _window, cx| {
-            cx.update_global::<AppState, _>(|state, _| state.current_device = idx);
+            // `set_current_device` is the authoritative path: it reloads the
+            // bindings for the new device and persists the selection to
+            // config.toml. Out-of-range indices are no-ops, so the carousel
+            // doesn't need to bounds-check.
+            cx.update_global::<AppState, _>(|state, _| state.set_current_device(idx));
             entity.update(cx, |_, cx| cx.notify());
         })
         .child(

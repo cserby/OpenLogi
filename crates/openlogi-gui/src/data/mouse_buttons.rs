@@ -12,7 +12,7 @@
     reason = "scaffolding consumed by UI.md phases 3–6 (carousel, popover, hotspots)"
 )]
 
-pub use openlogi_core::binding::{Action, ButtonId, default_binding};
+pub use openlogi_core::binding::{Action, ButtonId, Category, default_binding};
 
 /// The size of the mouse model canvas. Hotspot coords are relative to this.
 pub const MOUSE_MODEL_SIZE: (f32, f32) = (420., 560.);

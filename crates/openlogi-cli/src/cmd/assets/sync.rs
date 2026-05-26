@@ -21,11 +21,7 @@ const DEFAULT_BASE: &str = "https://assets.openlogi.org";
 /// `core_metadata.json` for hotspot layout; `manifest.json` drives the
 /// HID++ `extended_model_id` → colour variant lookup; `front_core.png`
 /// is the fallback render when the device's variant isn't cached.
-const REQUIRED_FILES: &[&str] = &[
-    "core_metadata.json",
-    "manifest.json",
-    "front_core.png",
-];
+const REQUIRED_FILES: &[&str] = &["core_metadata.json", "manifest.json", "front_core.png"];
 
 const INDEX_NAME: &str = "index.json";
 
@@ -58,8 +54,7 @@ pub fn run(args: SyncArgs) -> Result<()> {
 
     let (raw, index) = http::fetch_index_raw(&base)?;
     let index_path = out.join(INDEX_NAME);
-    fs::write(&index_path, &raw)
-        .with_context(|| format!("write {}", index_path.display()))?;
+    fs::write(&index_path, &raw).with_context(|| format!("write {}", index_path.display()))?;
     println!("index.json: {} devices", index.devices.len());
 
     // Prune orphans so the bundle stays in sync with the registry.
@@ -93,9 +88,7 @@ pub fn run(args: SyncArgs) -> Result<()> {
         let wanted: Vec<&openlogi_assets::FileEntry> = entry
             .files
             .iter()
-            .filter(|f| {
-                REQUIRED_FILES.contains(&f.name.as_str()) || is_variant_front(&f.name)
-            })
+            .filter(|f| REQUIRED_FILES.contains(&f.name.as_str()) || is_variant_front(&f.name))
             .collect();
         for required in REQUIRED_FILES {
             if !wanted.iter().any(|f| f.name == *required) {
@@ -110,8 +103,7 @@ pub fn run(args: SyncArgs) -> Result<()> {
                 continue;
             }
             let bytes = http::fetch_file(&base, &entry.asset_path, &file_entry.name)?;
-            fs::write(&dst, &bytes)
-                .with_context(|| format!("write {}", dst.display()))?;
+            fs::write(&dst, &bytes).with_context(|| format!("write {}", dst.display()))?;
             fetched += 1;
             println!("  {depot}/{} ({} B)", file_entry.name, file_entry.bytes);
         }

@@ -43,15 +43,12 @@ const STEP_DPI: f32 = 50.;
 
 pub struct DpiPanel {
     slider_state: Entity<SliderState>,
-    /// The connected device the slider writes to. `None` keeps the UI
-    /// functional in dev (no real device) — `AppState.dpi` still
-    /// updates so other panels can react, but no HID++ write fires.
-    target: Option<DpiTarget>,
     _slider_sub: Subscription,
+    _state_obs: Subscription,
 }
 
 impl DpiPanel {
-    pub fn new(target: Option<DpiTarget>, cx: &mut Context<Self>) -> Self {
+    pub fn new(cx: &mut Context<Self>) -> Self {
         let initial_dpi = dpi_to_f32(
             cx.try_global::<AppState>()
                 .map_or(crate::state::DEFAULT_DPI, |s| s.dpi),
@@ -68,30 +65,43 @@ impl DpiPanel {
                 .default_value(initial_dpi)
         });
 
-        let slider_sub = cx.subscribe(
-            &slider_state,
-            |panel, _slider, event: &SliderEvent, cx| match event {
-                // Continuous Change drives the in-process state so the
-                // numeric label tracks the drag. The HID write happens
-                // once on Release to keep us from spamming the device
-                // with intermediate values.
-                SliderEvent::Change(value) => {
-                    let dpi = clamp_dpi(value.start());
-                    debug!(dpi, "slider change → AppState.dpi");
-                    cx.update_global::<AppState, _>(|state, _| state.dpi = dpi);
-                    cx.notify();
-                }
-                SliderEvent::Release(value) => {
-                    let dpi = clamp_dpi(value.start());
-                    write_dpi_in_background(panel.target.clone(), dpi);
-                }
-            },
-        );
+        let slider_sub =
+            cx.subscribe(
+                &slider_state,
+                |_panel, _slider, event: &SliderEvent, cx| match event {
+                    // Continuous Change drives the in-process state so the
+                    // numeric label tracks the drag. The HID write happens
+                    // once on Release to keep us from spamming the device
+                    // with intermediate values.
+                    SliderEvent::Change(value) => {
+                        let dpi = clamp_dpi(value.start());
+                        debug!(dpi, "slider change → AppState.dpi");
+                        cx.update_global::<AppState, _>(|state, _| state.dpi = dpi);
+                        cx.notify();
+                    }
+                    SliderEvent::Release(value) => {
+                        let dpi = clamp_dpi(value.start());
+                        // Resolve the target from AppState at fire-time so
+                        // carousel-driven device switches route the write to
+                        // the now-current device, not whichever was active
+                        // when the panel was constructed.
+                        let target = cx
+                            .try_global::<AppState>()
+                            .and_then(|s| s.current_record().and_then(|r| r.dpi_target.clone()));
+                        write_dpi_in_background(target, dpi);
+                    }
+                },
+            );
+
+        // Repaint when the carousel switches devices so the label tracks
+        // the new device's last DPI (the slider thumb stays put — sliding
+        // to a different value will write to the now-current device).
+        let state_obs = cx.observe_global::<AppState>(|_panel, cx| cx.notify());
 
         Self {
             slider_state,
-            target,
             _slider_sub: slider_sub,
+            _state_obs: state_obs,
         }
     }
 }
@@ -126,11 +136,7 @@ fn write_dpi_in_background(target: Option<DpiTarget>, dpi: u32) {
             dpi_u16,
         ));
         match result {
-            Ok(()) => debug!(
-                slot = target.slot,
-                dpi = dpi_u16,
-                "DPI written to device"
-            ),
+            Ok(()) => debug!(slot = target.slot, dpi = dpi_u16, "DPI written to device"),
             Err(e) => warn!(error = ?e, "DPI write failed"),
         }
     });

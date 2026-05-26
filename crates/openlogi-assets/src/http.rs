@@ -36,8 +36,7 @@ pub fn fetch_index_raw(base: &str) -> Result<(Vec<u8>, Index)> {
     let url = format!("{base}/{INDEX_NAME}");
     debug!(%url, "fetching index.json");
     let body = get_bytes(&url)?;
-    let parsed: Index =
-        serde_json::from_slice(&body).context("parse fetched index.json")?;
+    let parsed: Index = serde_json::from_slice(&body).context("parse fetched index.json")?;
     Ok((body, parsed))
 }
 
@@ -67,8 +66,7 @@ pub fn sha256_hex(bytes: &[u8]) -> String {
 
 /// Streamed hex SHA-256 of `path`.
 pub fn sha256_of_file(path: &Path) -> Result<String> {
-    let mut file = fs::File::open(path)
-        .with_context(|| format!("open {}", path.display()))?;
+    let mut file = fs::File::open(path).with_context(|| format!("open {}", path.display()))?;
     let mut hasher = Sha256::new();
     let mut buf = [0u8; 8192];
     loop {

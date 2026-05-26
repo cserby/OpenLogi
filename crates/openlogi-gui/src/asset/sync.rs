@@ -151,7 +151,10 @@ fn fetch_to_cache(
             return Ok(());
         }
     } else {
-        warn!(file = name, "registry lists no entry — fetching without sha verify");
+        warn!(
+            file = name,
+            "registry lists no entry — fetching without sha verify"
+        );
     }
     let bytes = http::fetch_file(server, asset_path, name)?;
     fs::write(&dst, &bytes).with_context(|| format!("write {}", dst.display()))?;
