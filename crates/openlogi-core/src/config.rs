@@ -16,7 +16,7 @@ use std::{
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::binding::{Action, ButtonId};
+use crate::binding::{Action, ButtonId, GestureDirection};
 use crate::paths::{self, PathsError};
 
 /// The schema version the current build produces. Bumped on breaking layout
@@ -93,6 +93,12 @@ pub struct DeviceConfig {
     /// listed falls through to `button_bindings`.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub per_app_bindings: BTreeMap<String, BTreeMap<ButtonId, Action>>,
+    /// Sub-bindings for the gesture button: hold + swipe direction or a
+    /// plain click. Edited via the gesture picker; the legacy single
+    /// `button_bindings[GestureButton]` entry is ignored on devices that
+    /// have entries here. Hardware dispatch is a P1.5 follow-up.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub gesture_bindings: BTreeMap<GestureDirection, Action>,
     /// Ordered list of DPI presets cycled through by
     /// [`Action::CycleDpiPresets`] and indexed by
     /// [`Action::SetDpiPreset`]. Empty means "no presets configured" —
@@ -201,6 +207,33 @@ impl Config {
             .or_default()
             .button_bindings
             .insert(button, action);
+    }
+
+    /// Returns the gesture sub-bindings stored for `device_key`, or an empty
+    /// map if none are set yet.
+    #[must_use]
+    pub fn gesture_bindings_for(
+        &self,
+        device_key: &str,
+    ) -> BTreeMap<GestureDirection, Action> {
+        self.devices
+            .get(device_key)
+            .map(|d| d.gesture_bindings.clone())
+            .unwrap_or_default()
+    }
+
+    /// Records `action` for `direction` of `device_key`'s gesture button.
+    pub fn set_gesture_binding(
+        &mut self,
+        device_key: &str,
+        direction: GestureDirection,
+        action: Action,
+    ) {
+        self.devices
+            .entry(device_key.to_string())
+            .or_default()
+            .gesture_bindings
+            .insert(direction, action);
     }
 
     /// Resolve the effective binding map for `device_key`, overlaying the

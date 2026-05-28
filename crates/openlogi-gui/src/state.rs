@@ -24,7 +24,9 @@ use tracing::{debug, warn};
 
 use crate::asset::{AssetCache, ResolvedAsset};
 use crate::components::dpi_panel::DpiTarget;
-use crate::data::mouse_buttons::{Action, ButtonId, default_binding};
+use crate::data::mouse_buttons::{
+    Action, ButtonId, GestureDirection, default_binding, default_gesture_binding,
+};
 
 /// Default DPI value applied to a fresh AppState. Matches a common Logitech
 /// mid-range mouse and keeps the dot-preview visually obvious from frame one.
@@ -90,9 +92,19 @@ pub struct AppState {
     /// The hotspot the user most recently armed by clicking. Drives the
     /// "selected button" outline on the mouse model and the popover content.
     pub active_button: Option<ButtonId>,
+    /// Which gesture sub-direction is currently being edited inside the
+    /// gesture-button popover. `None` means the popover is on the
+    /// directions-list "page"; `Some(dir)` means it's drilled into the
+    /// action picker for that direction. Pure UI scratch state — not
+    /// persisted to disk.
+    pub gesture_edit: Option<GestureDirection>,
     /// Bindings for the *currently selected* device. Reloaded whenever the
     /// carousel selection changes.
     pub button_bindings: BTreeMap<ButtonId, Action>,
+    /// Per-direction sub-bindings for the gesture button on the currently
+    /// selected device. Edited via the gesture picker; persistence shape
+    /// lives in [`openlogi_core::config::DeviceConfig::gesture_bindings`].
+    pub gesture_bindings: BTreeMap<GestureDirection, Action>,
     pub dpi: u32,
     /// All paired devices, in carousel order. Each entry caches the per-
     /// device data the views need so a switch is a pure index update.
@@ -148,7 +160,9 @@ impl AppState {
             current_device,
             current_app_bundle: None,
             active_button: None,
+            gesture_edit: None,
             button_bindings: BTreeMap::new(),
+            gesture_bindings: BTreeMap::new(),
             dpi: DEFAULT_DPI,
             device_list,
             config,
@@ -156,6 +170,7 @@ impl AppState {
             dpi_cycle,
         };
         state.button_bindings = state.bindings_for_current();
+        state.gesture_bindings = state.gesture_bindings_for_current();
         state.sync_hook_bindings();
         state.sync_dpi_cycle();
         state
@@ -248,6 +263,7 @@ impl AppState {
         self.device_list = new_list;
         self.current_device = new_index;
         self.button_bindings = self.bindings_for_current();
+        self.gesture_bindings = self.gesture_bindings_for_current();
         self.sync_hook_bindings();
         self.sync_dpi_cycle();
     }
@@ -263,6 +279,7 @@ impl AppState {
         }
         self.current_device = idx;
         self.button_bindings = self.bindings_for_current();
+        self.gesture_bindings = self.gesture_bindings_for_current();
         self.sync_hook_bindings();
         self.sync_dpi_cycle();
         let key = self.current_record().map(|r| r.config_key.clone());
@@ -344,6 +361,29 @@ impl AppState {
             self.current_record(),
             self.current_app_bundle.as_deref(),
         )
+    }
+
+    fn gesture_bindings_for_current(&self) -> BTreeMap<GestureDirection, Action> {
+        gesture_bindings_for(&self.config, self.current_record())
+    }
+
+    /// Update a single gesture-button sub-binding in memory + on disk for the
+    /// currently selected device. The hook layer doesn't yet read the
+    /// gesture map (P1.5), so this is config-only — no shared `Arc` push.
+    pub fn commit_gesture_binding(&mut self, direction: GestureDirection, action: Action) {
+        self.gesture_bindings.insert(direction, action.clone());
+
+        let Some(key) = self.current_record().map(|r| r.config_key.clone()) else {
+            debug!(
+                ?direction,
+                "no active device key — gesture binding kept in memory only"
+            );
+            return;
+        };
+        self.config.set_gesture_binding(&key, direction, action);
+        if let Err(e) = self.config.save_atomic() {
+            warn!(error = %e, "could not persist gesture binding to config.toml");
+        }
     }
 
     /// Mirror [`Self::button_bindings`] into the hook-shared `Arc`. Called
@@ -441,6 +481,24 @@ fn bindings_for(
         .iter()
         .copied()
         .map(|b| (b, default_binding(b)))
+        .collect();
+    for (k, v) in stored {
+        bindings.insert(k, v);
+    }
+    bindings
+}
+
+fn gesture_bindings_for(
+    config: &Config,
+    record: Option<&DeviceRecord>,
+) -> BTreeMap<GestureDirection, Action> {
+    let stored = record
+        .map(|r| config.gesture_bindings_for(&r.config_key))
+        .unwrap_or_default();
+    let mut bindings: BTreeMap<GestureDirection, Action> = GestureDirection::ALL
+        .iter()
+        .copied()
+        .map(|d| (d, default_gesture_binding(d)))
         .collect();
     for (k, v) in stored {
         bindings.insert(k, v);

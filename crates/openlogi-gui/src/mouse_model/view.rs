@@ -23,7 +23,7 @@ use crate::data::mouse_buttons::{Action, ButtonId, Hotspot, MOUSE_MODEL_SIZE, de
 use crate::mouse_model::leader_lines::{
     Geometry as LeaderGeometry, Label, Side, paint as paint_leader_lines,
 };
-use crate::mouse_model::picker::action_picker;
+use crate::mouse_model::picker::{action_picker, gesture_picker};
 use crate::state::AppState;
 use crate::theme::{ACCENT_BLUE, BORDER, SURFACE_HOVER, TEXT_MUTED, TEXT_PRIMARY};
 
@@ -195,9 +195,15 @@ impl Render for MouseModelView {
             .child(breathing_art)
             .child(leader_canvas)
             .children(labels_outer.iter().enumerate().map(|(idx, label)| {
-                let binding = bindings
-                    .get(&label.id)
-                    .map_or_else(|| "Unbound".to_string(), Action::label);
+                // GestureButton has 5 sub-bindings, not one — surface that
+                // up front so the label isn't lying about what's bound.
+                let binding = if label.id == ButtonId::GestureButton {
+                    "5 directions".to_string()
+                } else {
+                    bindings
+                        .get(&label.id)
+                        .map_or_else(|| "Unbound".to_string(), Action::label)
+                };
                 label_popover(
                     idx,
                     *label,
@@ -416,7 +422,13 @@ fn label_popover(
                 .anchor(Anchor::TopLeft)
                 .mouse_button(MouseButton::Left)
                 .trigger(trigger)
-                .content(move |_state, _window, cx| action_picker(label.id, &view, cx)),
+                .content(move |_state, _window, cx| {
+                    if label.id == ButtonId::GestureButton {
+                        gesture_picker(&view, cx)
+                    } else {
+                        action_picker(label.id, &view, cx)
+                    }
+                }),
         )
         .into_any_element()
 }
@@ -566,7 +578,13 @@ fn hotspot_popover(
                 .anchor(Anchor::TopRight)
                 .mouse_button(MouseButton::Left)
                 .trigger(trigger)
-                .content(move |_state, _window, cx| action_picker(hotspot.id, &view, cx)),
+                .content(move |_state, _window, cx| {
+                    if hotspot.id == ButtonId::GestureButton {
+                        gesture_picker(&view, cx)
+                    } else {
+                        action_picker(hotspot.id, &view, cx)
+                    }
+                }),
         )
         .into_any_element()
 }

@@ -65,6 +65,61 @@ impl fmt::Display for ButtonId {
     }
 }
 
+/// One of the five sub-bindings on the gesture button: hold + swipe up/down/
+/// left/right or a plain click without movement. Logi ships these as
+/// independent assignments (`SLOT_NAME_GESTURE_*_BUTTON` in the
+/// `device_gesture_buttons_image` metadata block) — OpenLogi mirrors the
+/// same shape.
+///
+/// Variant identifiers are TOML-stable: renames are migration events.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
+pub enum GestureDirection {
+    Up,
+    Down,
+    Left,
+    Right,
+    Click,
+}
+
+impl GestureDirection {
+    pub const ALL: [GestureDirection; 5] = [
+        GestureDirection::Up,
+        GestureDirection::Down,
+        GestureDirection::Left,
+        GestureDirection::Right,
+        GestureDirection::Click,
+    ];
+
+    #[must_use]
+    pub fn label(self) -> &'static str {
+        match self {
+            GestureDirection::Up => "Up",
+            GestureDirection::Down => "Down",
+            GestureDirection::Left => "Left",
+            GestureDirection::Right => "Right",
+            GestureDirection::Click => "Click",
+        }
+    }
+
+    /// Arrow glyph for compact list rendering.
+    #[must_use]
+    pub fn glyph(self) -> &'static str {
+        match self {
+            GestureDirection::Up => "↑",
+            GestureDirection::Down => "↓",
+            GestureDirection::Left => "←",
+            GestureDirection::Right => "→",
+            GestureDirection::Click => "·",
+        }
+    }
+}
+
+impl fmt::Display for GestureDirection {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.label())
+    }
+}
+
 /// Grouping for popover section headers.
 ///
 /// Used by [`Action::category`] and rendered as a small muted label above
@@ -698,6 +753,10 @@ mod macos {
 /// Mission Control. They become functional once the hook layer captures
 /// these inputs (P1.5 follow-up); the bindings persist meanwhile so the
 /// user only configures once.
+///
+/// `GestureButton`'s entry here is the legacy single-binding placeholder;
+/// the per-direction sub-bindings live in [`default_gesture_binding`] and
+/// are what the UI now edits.
 #[must_use]
 pub fn default_binding(button: ButtonId) -> Action {
     match button {
@@ -709,6 +768,21 @@ pub fn default_binding(button: ButtonId) -> Action {
         ButtonId::DpiToggle => Action::CycleDpiPresets,
         ButtonId::Thumbwheel => Action::AppExpose,
         ButtonId::GestureButton => Action::MissionControl,
+    }
+}
+
+/// Per-direction defaults for the gesture button. The hardware integration
+/// (HID++ feature 0x6500 GestureEnhanced read path + hook dispatch) is a
+/// separate follow-up — these defaults exist so the picker has something
+/// sensible to show on first run.
+#[must_use]
+pub fn default_gesture_binding(direction: GestureDirection) -> Action {
+    match direction {
+        GestureDirection::Up => Action::MissionControl,
+        GestureDirection::Down => Action::ShowDesktop,
+        GestureDirection::Left => Action::PrevTab,
+        GestureDirection::Right => Action::NextTab,
+        GestureDirection::Click => Action::AppExpose,
     }
 }
 
