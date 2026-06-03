@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.2](https://github.com/AprilNEA/OpenLogi/compare/openlogi-core-v0.4.1...openlogi-core-v0.4.2) - 2026-06-03
+
+### Added
+
+- add wired G-series keyboard RGB control ([#29](https://github.com/AprilNEA/OpenLogi/pull/29))
+
 ## [0.4.1](https://github.com/AprilNEA/OpenLogi/compare/openlogi-v0.4.0...openlogi-v0.4.1) - 2026-06-03
 
 ### Added
