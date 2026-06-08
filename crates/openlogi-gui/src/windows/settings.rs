@@ -294,13 +294,21 @@ fn permissions_page(pal: Palette) -> SettingPage {
             SettingField::render(move |_, _, _| {
                 let status = permissions::input_device_access();
                 let field = gpui_component::v_flex().gap_1().child(status_badge(status));
-                if matches!(status, PermissionStatus::Denied | PermissionStatus::Unknown) {
-                    field.child(div().text_xs().text_color(pal.text_muted).child(tr!(
+                let hint = match status {
+                    PermissionStatus::Denied => Some(tr!(
                         "OpenLogi needs write access to /dev/uinput (for button \
-                             remapping) and read/write access to /dev/hidraw* (for HID++ \
-                             communication). Install the OpenLogi udev rules to grant \
-                             access — see the Linux install guide."
-                    )))
+                         remapping) and read/write access to /dev/hidraw* (for HID++ \
+                         communication). Install the OpenLogi udev rules to grant \
+                         access — see the Linux install guide."
+                    )),
+                    PermissionStatus::Unknown => Some(tr!(
+                        "No Logitech device detected. Connect your device or verify \
+                         the hidraw udev rules are installed."
+                    )),
+                    PermissionStatus::Granted => None,
+                };
+                if let Some(text) = hint {
+                    field.child(div().text_xs().text_color(pal.text_muted).child(text))
                 } else {
                     field
                 }
@@ -444,9 +452,6 @@ fn permission_field(
                 permissions::open_pane(permission);
             }),
     );
-
-    #[cfg(not(target_os = "macos"))]
-    let _ = (id, permission, pal);
 
     row
 }

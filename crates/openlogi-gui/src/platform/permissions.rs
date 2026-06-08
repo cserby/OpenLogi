@@ -223,7 +223,6 @@ pub(crate) mod linux {
             if !name.starts_with("hidraw") || !is_logitech_hidraw(&name) {
                 continue;
             }
-            // Check vendor via sysfs uevent: HID_ID=XXXX:0000046D:...
             match fs::OpenOptions::new()
                 .read(true)
                 .write(true)
