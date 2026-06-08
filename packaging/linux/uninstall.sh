@@ -22,9 +22,14 @@ BINDIR="${PREFIX}/bin"
 
 # ── stop and disable the agent ────────────────────────────────────────────────
 
+# systemctl --user targets the session of whichever user is running this script.
+# When invoked via sudo, use SUDO_USER so the command targets the real user's
+# session, not root's (which has no agent running).
+REAL_USER="${SUDO_USER:-$USER}"
+
 if command -v systemctl > /dev/null 2>&1; then
     echo "Disabling and stopping the agent …"
-    systemctl --user disable --now openlogi-agent.service 2>/dev/null || true
+    sudo -u "$REAL_USER" systemctl --user disable --now openlogi-agent.service 2>/dev/null || true
 fi
 
 # ── remove binaries ───────────────────────────────────────────────────────────
