@@ -91,8 +91,12 @@ fi
 SYSTEMD_UNIT_DIR=/usr/lib/systemd/user
 if [ -d "$SYSTEMD_UNIT_DIR" ] || command -v systemctl > /dev/null 2>&1; then
     echo "Installing systemd user unit …"
-    sudo install -Dm644 "${SCRIPT_DIR}/systemd/openlogi-agent.service" \
-        "${SYSTEMD_UNIT_DIR}/openlogi-agent.service"
+    # Rewrite ExecStart to match the actual install prefix so the service finds
+    # the binary regardless of whether --prefix was passed.
+    sudo install -Dm644 /dev/null "${SYSTEMD_UNIT_DIR}/openlogi-agent.service"
+    sed "s|ExecStart=.*|ExecStart=${BINDIR}/openlogi-agent|" \
+        "${SCRIPT_DIR}/systemd/openlogi-agent.service" \
+        | sudo tee "${SYSTEMD_UNIT_DIR}/openlogi-agent.service" > /dev/null
     echo "Enable the agent for your user with:"
     echo "  systemctl --user enable --now openlogi-agent.service"
 fi
