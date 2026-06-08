@@ -99,7 +99,10 @@ if [ -d "$SYSTEMD_UNIT_DIR" ] || command -v systemctl > /dev/null 2>&1; then
         | sudo tee "${SYSTEMD_UNIT_DIR}/openlogi-agent.service" > /dev/null
     # Best-effort daemon-reload for the invoking user so a reinstall picks up
     # the updated unit without requiring a manual reload.
-    sudo -u "${SUDO_USER:-$USER}" systemctl --user daemon-reload 2>/dev/null || true
+    INSTALL_USER="${SUDO_USER:-$USER}"
+    sudo -u "$INSTALL_USER" \
+        XDG_RUNTIME_DIR="/run/user/$(id -u "$INSTALL_USER")" \
+        systemctl --user daemon-reload 2>/dev/null || true
     echo "Enable the agent for your user with:"
     echo "  systemctl --user enable --now openlogi-agent.service"
 fi

@@ -26,10 +26,14 @@ BINDIR="${PREFIX}/bin"
 # When invoked via sudo, use SUDO_USER so the command targets the real user's
 # session, not root's (which has no agent running).
 REAL_USER="${SUDO_USER:-$USER}"
+REAL_UID="$(id -u "$REAL_USER")"
 
 if command -v systemctl > /dev/null 2>&1; then
     echo "Disabling and stopping the agent …"
-    sudo -u "$REAL_USER" systemctl --user disable --now openlogi-agent.service 2>/dev/null || true
+    # Set XDG_RUNTIME_DIR explicitly: sudo -u strips the environment so
+    # systemctl --user cannot locate the user's D-Bus socket without it.
+    sudo -u "$REAL_USER" XDG_RUNTIME_DIR="/run/user/${REAL_UID}" \
+        systemctl --user disable --now openlogi-agent.service 2>/dev/null || true
 fi
 
 # ── remove binaries ───────────────────────────────────────────────────────────
