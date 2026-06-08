@@ -260,12 +260,8 @@ fn reconcile_linux(enabled: bool) -> io::Result<()> {
 /// (default `~/.config/systemd/user/openlogi-agent.service`).
 #[cfg(target_os = "linux")]
 fn unit_path() -> io::Result<PathBuf> {
-    // config_dir() returns $XDG_CONFIG_HOME/openlogi; its parent is the raw
-    // XDG config home, which is where systemd user units live.
-    let config_dir = openlogi_core::paths::config_dir().map_err(io::Error::other)?;
-    let config_home = config_dir
-        .parent()
-        .ok_or_else(|| io::Error::other("cannot resolve XDG config home"))?;
+    let config_home =
+        openlogi_core::paths::xdg_config_home().map_err(io::Error::other)?;
     Ok(config_home.join("systemd").join("user").join(UNIT_NAME))
 }
 
@@ -299,7 +295,7 @@ fn render_unit(exe: &str) -> String {
 /// wrapped in double quotes (inner `"` are backslash-escaped).
 #[cfg(target_os = "linux")]
 fn escape_systemd_exec(s: &str) -> String {
-    let doubled = s.replace('%', "%%");
+    let doubled = s.replace('%', "%%").replace('$', "$$");
     if doubled.contains(' ') {
         format!("\"{}\"", doubled.replace('"', "\\\""))
     } else {
@@ -401,6 +397,14 @@ mod linux_tests {
     fn escape_systemd_exec_quotes_and_doubles_percent_with_spaces() {
         let result = escape_systemd_exec("/home/my%20 user/openlogi-agent");
         assert_eq!(result, "\"/home/my%%20 user/openlogi-agent\"");
+    }
+
+    #[test]
+    fn escape_systemd_exec_doubles_dollar() {
+        assert_eq!(
+            escape_systemd_exec("/opt/release$1/bin/openlogi-agent"),
+            "/opt/release$$1/bin/openlogi-agent"
+        );
     }
 
     #[test]
