@@ -67,10 +67,13 @@ impl DeviceRoute {
     /// Build the route that reaches a paired device from a receiver inventory.
     ///
     /// Picks [`DeviceRoute::Unifying`] or [`DeviceRoute::Bolt`] based on the
-    /// receiver's product ID, [`DeviceRoute::Direct`] for directly-attached
-    /// devices (slot == [`DIRECT_DEVICE_INDEX`] with no receiver UID), and
-    /// `None` when the receiver UID is unknown (writes are skipped rather than
-    /// mis-routed).
+    /// receiver's product ID using the canonical `UNIFYING_PIDS` / `BOLT_PIDS`
+    /// lists. Any receiver PID not in `UNIFYING_PIDS` — including future Bolt
+    /// variants whose PID isn't yet in `BOLT_PIDS` — defaults to
+    /// [`DeviceRoute::Bolt`] so writes keep working rather than silently
+    /// dropping. [`DeviceRoute::Direct`] is used for directly-attached devices
+    /// (slot == [`DIRECT_DEVICE_INDEX`] with no receiver UID). Returns `None`
+    /// when the receiver UID is unknown (writes are skipped, not mis-routed).
     #[must_use]
     pub fn device_route_for(inv: &DeviceInventory, slot: u8) -> Option<Self> {
         match &inv.receiver.unique_id {
@@ -78,10 +81,22 @@ impl DeviceRoute {
                 receiver_uid: uid.clone(),
                 slot,
             }),
-            Some(uid) => Some(Self::Bolt {
-                receiver_uid: uid.clone(),
-                slot,
-            }),
+            Some(uid) => {
+                // Default to Bolt for any receiver whose PID is not in
+                // UNIFYING_PIDS. This covers both known Bolt PIDs (BOLT_PIDS)
+                // and any future Bolt-compatible receiver with a new PID —
+                // returning None would silently drop writes for such receivers.
+                if !BOLT_PIDS.contains(&inv.receiver.product_id) {
+                    tracing::debug!(
+                        pid = format_args!("{:04x}", inv.receiver.product_id),
+                        "unknown receiver PID — routing as Bolt"
+                    );
+                }
+                Some(Self::Bolt {
+                    receiver_uid: uid.clone(),
+                    slot,
+                })
+            }
             None if slot == DIRECT_DEVICE_INDEX => Some(Self::Direct {
                 vendor_id: inv.receiver.vendor_id,
                 product_id: inv.receiver.product_id,
@@ -191,7 +206,8 @@ mod tests {
 
     #[test]
     fn device_route_for_bolt_pid_creates_bolt_route() {
-        // 0xC548 is Bolt; anything not in UNIFYING_PIDS defaults to Bolt.
+        // 0xC548 is Bolt; anything not in UNIFYING_PIDS defaults to Bolt so
+        // future Bolt variants with unknown PIDs still work.
         let route = DeviceRoute::device_route_for(&inv(0xc548, Some("UID")), 1);
         assert!(matches!(
             route,

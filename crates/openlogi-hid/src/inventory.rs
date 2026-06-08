@@ -468,9 +468,13 @@ async fn probe_unifying_receiver(
 
     // Probe all online slots concurrently so a slow HID++ 2.0 feature walk on
     // one device doesn't push the next slot past the PROBE_BUDGET deadline.
+    // Pass the receiver UID so each slot's cache key is scoped to this specific
+    // receiver — two Unifying receivers sharing a slot number must not share a
+    // cache entry (different devices, different capabilities).
+    let receiver_uid = unique_id.as_deref().unwrap_or("");
     let slot_results = connections
         .iter()
-        .map(|conn| probe_unifying_slot(&channel, conn, cache, tick))
+        .map(|conn| probe_unifying_slot(&channel, conn, receiver_uid, cache, tick))
         .collect::<Vec<_>>()
         .join()
         .await;
@@ -689,11 +693,13 @@ async fn drain_device_arrival_unifying(
 /// Device-arrival events carry the slot index, kind, wpid, and online status —
 /// enough to surface an entry for every currently-connected device. The
 /// unit_id (needed for stable caching across ticks) is not available without a
-/// working `get_device_pairing_information` call; we use a slot-keyed fallback
-/// cache key so the expensive feature-table walk is still amortised at ~30s.
+/// working `get_device_pairing_information` call; we derive a stable cache key
+/// from the receiver UID + slot so the feature-table walk is amortised at ~30s
+/// and two receivers sharing a slot number don't collide in the cache.
 async fn probe_unifying_slot(
     channel: &Arc<HidppChannel>,
     event: &UnifyingDeviceConnection,
+    receiver_uid: &str,
     cache: &HashMap<CacheKey, Cached>,
     tick: u64,
 ) -> Option<(PairedDevice, CacheOutcome)> {
@@ -708,10 +714,17 @@ async fn probe_unifying_slot(
         "unifying paired slot"
     );
 
-    // Stable-per-slot fallback cache key: not as precise as per-unit_id, but
-    // keeps the probe from re-running every tick (15-tick / ~30s window).
+    // Cache key: first 3 ASCII bytes of the receiver UID + slot.
+    // Scoping the key to the receiver prevents two Unifying receivers that
+    // both have a device on slot N from sharing a cached ProbedFeatures entry.
+    let uid = receiver_uid.as_bytes();
     let id = CacheKey::Bolt {
-        unit_id: [0, 0, 0, slot],
+        unit_id: [
+            uid.first().copied().unwrap_or(0),
+            uid.get(1).copied().unwrap_or(0),
+            uid.get(2).copied().unwrap_or(0),
+            slot,
+        ],
     };
     let cached = cache.get(&id);
     let register_kind = map_unifying_kind(event.kind);
