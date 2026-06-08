@@ -1,0 +1,68 @@
+use std::path::{Path, PathBuf};
+use std::process::Command as ProcessCommand;
+
+use anyhow::{Context as _, Result};
+use clap::Parser;
+
+use crate::util::{absolutize, ensure_command, ensure_file, repo_root, run};
+
+#[derive(Parser)]
+pub(crate) struct PackageLinux {
+    /// Output directory for .deb and .rpm packages (default: target/release).
+    #[arg(long, default_value = "target/release")]
+    output: PathBuf,
+    /// Skip the cargo build step (binaries must already exist in target/release).
+    #[arg(long)]
+    no_build: bool,
+}
+
+pub(crate) fn package_linux(args: &PackageLinux) -> Result<()> {
+    let root = repo_root()?;
+
+    if !args.no_build {
+        println!("==> build release binaries");
+        run(ProcessCommand::new("cargo")
+            .args(["build", "--release", "-p", "openlogi", "-p", "openlogi-gui", "-p", "openlogi-agent"])
+            .current_dir(&root))?;
+    }
+
+    for bin in ["openlogi", "openlogi-gui", "openlogi-agent"] {
+        ensure_file(&root.join("target/release").join(bin))?;
+    }
+
+    ensure_command("nfpm")?;
+
+    let version = workspace_version(&root)?;
+    let output = absolutize(&root, &args.output);
+    let config = root.join("packaging/linux/nfpm.yaml");
+
+    for packager in ["deb", "rpm"] {
+        println!("==> nfpm {packager}");
+        run(ProcessCommand::new("nfpm")
+            .args(["package", "--packager", packager, "--config"])
+            .arg(&config)
+            .arg("--target")
+            .arg(&output)
+            .env("VERSION", &version)
+            .current_dir(&root))?;
+    }
+
+    println!();
+    println!("Linux packages written to {}", output.display());
+    Ok(())
+}
+
+fn workspace_version(root: &Path) -> Result<String> {
+    let toml = std::fs::read_to_string(root.join("Cargo.toml"))
+        .context("could not read workspace Cargo.toml")?;
+    for line in toml.lines() {
+        let line = line.trim();
+        if let Some(rest) = line.strip_prefix("version") {
+            let rest = rest.trim_start_matches([' ', '\t', '=', '"']).trim_end_matches('"');
+            if !rest.is_empty() && rest != "workspace = true" {
+                return Ok(rest.to_owned());
+            }
+        }
+    }
+    anyhow::bail!("could not find version field in workspace Cargo.toml")
+}

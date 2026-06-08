@@ -533,6 +533,50 @@ jobs:
           name: OpenLogi-release-notes
           path: .release/RELEASE_NOTES.md
 
+  linux-packages:
+    name: Linux packages (.deb / .rpm)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libfontconfig1-dev libfreetype-dev libxcb1-dev libxkbcommon-dev
+
+      - name: Install nfpm
+        run: |
+          echo 'deb [trusted=yes] https://repo.goreleaser.com/apt/ /' \
+            | sudo tee /etc/apt/sources.list.d/goreleaser.list
+          sudo apt-get update
+          sudo apt-get install -y nfpm
+
+      - name: Build and package
+        run: cargo run -p xtask -- package-linux
+
+      - name: Collect packages
+        run: |
+          mkdir -p dist
+          ref_name="${GITHUB_REF_NAME:-dev}"
+          ref_name="${ref_name//\//-}"
+          for pkg in target/release/*.deb target/release/*.rpm; do
+            [ -f "$pkg" ] || continue
+            ext="${pkg##*.}"
+            cp "$pkg" "dist/openlogi-${ref_name}-linux-amd64.${ext}"
+          done
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: OpenLogi-linux-packages
+          path: dist/*
+
   # Single owner of the GitHub Release. softprops/action-gh-release@v3 creates the
   # release as a draft, uploads every asset to that (mutable) draft, then publishes
   # it as its final step — so the release only becomes immutable once all DMGs and
@@ -583,6 +627,11 @@ jobs:
         with:
           name: OpenLogi-release-notes
           path: .release
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: OpenLogi-linux-packages
+          path: dist
 
       - name: Generate checksums
         run: |
@@ -736,6 +785,8 @@ jobs:
           body_path: .release/RELEASE_NOTES.md
           files: |
             dist/*.dmg
+            dist/*.deb
+            dist/*.rpm
             dist/*.minisig
             dist/SHA256SUMS
             ${{ steps.windows_exes.outputs.exe == 'true' && 'dist/*.exe' || '' }}
