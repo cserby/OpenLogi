@@ -63,7 +63,7 @@ impl Receiver {
     pub async fn get_unique_id(&self) -> Result<String, ReceiverError> {
         match self {
             Self::Bolt(bolt) => bolt.get_unique_id().await,
-            Self::Unifying(unifying) => unifying.get_receiver_info().await.map(|x| x.serial_number),
+            Self::Unifying(unifying) => unifying.get_unique_id().await,
         }
     }
 }

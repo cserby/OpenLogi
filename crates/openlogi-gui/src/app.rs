@@ -1237,6 +1237,7 @@ fn sidebar_action(
 fn route_label(route: Option<&DeviceRoute>) -> String {
     match route {
         Some(DeviceRoute::Bolt { .. }) => tr!("Bolt receiver").to_string(),
+        Some(DeviceRoute::Unifying { .. }) => tr!("Unifying receiver").to_string(),
         Some(DeviceRoute::Direct { .. }) => tr!("Direct connection").to_string(),
         None => tr!("Unavailable").to_string(),
     }

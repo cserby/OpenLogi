@@ -19,6 +19,10 @@ pub enum DeviceStableId {
         receiver_uid: String,
         slot: u8,
     },
+    Unifying {
+        receiver_uid: String,
+        slot: u8,
+    },
     Direct {
         vendor_id: u16,
         product_id: u16,
@@ -60,6 +64,10 @@ impl DeviceStableId {
     ) -> Self {
         match route {
             Some(DeviceRoute::Bolt { receiver_uid, slot }) => Self::Bolt {
+                receiver_uid: receiver_uid.to_ascii_lowercase(),
+                slot: *slot,
+            },
+            Some(DeviceRoute::Unifying { receiver_uid, slot }) => Self::Unifying {
                 receiver_uid: receiver_uid.to_ascii_lowercase(),
                 slot: *slot,
             },
