@@ -546,15 +546,17 @@ jobs:
       - uses: Swatinem/rust-cache@v2
 
       - name: Install system dependencies and nfpm
+        env:
+          NFPM_VERSION: "2.46.3"
+          NFPM_SHA256: "d6417f99d5fa32bba7a4e007084615d3897651498c2e443118c26b9ec3b698a8"
         run: |
-          curl -fsSL https://repo.goreleaser.com/apt/gpg.key \
-            | gpg --dearmor \
-            | sudo tee /usr/share/keyrings/goreleaser-archive-keyring.gpg > /dev/null
-          echo "deb [signed-by=/usr/share/keyrings/goreleaser-archive-keyring.gpg] https://repo.goreleaser.com/apt/ /" \
-            | sudo tee /etc/apt/sources.list.d/goreleaser.list
           sudo apt-get update
           sudo apt-get install -y \
-            libfontconfig1-dev libfreetype-dev libxcb1-dev libxkbcommon-dev nfpm
+            libfontconfig1-dev libfreetype-dev libxcb1-dev libxkbcommon-dev
+          curl -fsSLo /tmp/nfpm.deb \
+            "https://github.com/goreleaser/nfpm/releases/download/v${NFPM_VERSION}/nfpm_${NFPM_VERSION}_amd64.deb"
+          echo "${NFPM_SHA256}  /tmp/nfpm.deb" | sha256sum -c
+          sudo dpkg -i /tmp/nfpm.deb
 
       - name: Build and package
         run: cargo run -p xtask -- package-linux
