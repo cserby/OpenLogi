@@ -14,8 +14,12 @@
 #   the 'input' group: sudo usermod -aG input $USER  (re-login required).
 
 # Logitech HID++ receivers and directly-connected devices (hidraw interface).
-# Covers Bolt (0xC548), Unifying (0xC52B), and any other Logitech receiver PID.
+# Two rules are needed to cover both transports:
+#   - USB / Unifying / Bolt receivers: ATTRS{idVendor} walks the USB sysfs chain.
+#   - Bluetooth (uhid virtual bus): ATTRS{idVendor} is absent; match on the HID
+#     kernel name format "bus:VID:PID.iface" whose VID field is always uppercase.
 SUBSYSTEM=="hidraw", ATTRS{idVendor}=="046d", TAG+="uaccess"
+SUBSYSTEM=="hidraw", KERNELS=="*:046D:*", TAG+="uaccess"
 
 # uinput virtual device node — needed for the evdev/uinput input hook.
 # OPTIONS+="static_node=uinput" creates the node at boot even before any device
