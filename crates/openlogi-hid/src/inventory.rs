@@ -99,6 +99,11 @@ const REFRESH_TICKS: u64 = 15;
 enum CacheKey {
     /// Bolt: the unit id from the pairing register (cheap, read every tick).
     Bolt { unit_id: [u8; 4] },
+    /// Unifying: keyed on the full receiver serial number + pairing slot.
+    /// Using the complete serial (not just a prefix) avoids collisions between
+    /// two receivers whose serials share a common prefix (e.g. "DA2699E1" and
+    /// "DA2604F2" share "DA2").
+    UnifyingSlot { receiver_uid: String, slot: u8 },
     /// Direct (Bluetooth/USB): the OS-assigned HID node id (macOS registry-entry
     /// id, Linux dev path, Windows interface path). Unique *per node*, so two
     /// units of the same model never collide, and stable while connected so the
@@ -714,17 +719,11 @@ async fn probe_unifying_slot(
         "unifying paired slot"
     );
 
-    // Cache key: first 3 ASCII bytes of the receiver UID + slot.
-    // Scoping the key to the receiver prevents two Unifying receivers that
-    // both have a device on slot N from sharing a cached ProbedFeatures entry.
-    let uid = receiver_uid.as_bytes();
-    let id = CacheKey::Bolt {
-        unit_id: [
-            uid.first().copied().unwrap_or(0),
-            uid.get(1).copied().unwrap_or(0),
-            uid.get(2).copied().unwrap_or(0),
-            slot,
-        ],
+    // Cache key: full receiver serial + slot so two Unifying receivers with
+    // a device on the same slot number never share a cache entry.
+    let id = CacheKey::UnifyingSlot {
+        receiver_uid: receiver_uid.to_string(),
+        slot,
     };
     let cached = cache.get(&id);
     let register_kind = map_unifying_kind(event.kind);

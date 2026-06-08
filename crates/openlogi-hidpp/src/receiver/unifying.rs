@@ -10,6 +10,22 @@
 
 use std::sync::Arc;
 
+/// Removes the HID++ message listener when the last [`Receiver`] clone is
+/// dropped. Wrapping the handle in an `Arc` instead of storing it as a bare
+/// `u32` on `Receiver` prevents the `#[derive(Clone)]` copy from sharing the
+/// handle: every clone increments the `Arc` refcount, and `remove_msg_listener`
+/// is called exactly once — when the last clone is dropped.
+struct ListenerDropGuard {
+    chan: Arc<HidppChannel>,
+    hdl: u32,
+}
+
+impl Drop for ListenerDropGuard {
+    fn drop(&mut self) {
+        self.chan.remove_msg_listener(self.hdl);
+    }
+}
+
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 
 use crate::{
@@ -65,7 +81,7 @@ pub enum InfoSubRegister {
 pub struct Receiver {
     chan: Arc<HidppChannel>,
     emitter: Arc<EventEmitter<Event>>,
-    msg_listener_hdl: u32,
+    _listener: Arc<ListenerDropGuard>,
 }
 
 impl Receiver {
@@ -112,9 +128,12 @@ impl Receiver {
         });
 
         Ok(Receiver {
+            _listener: Arc::new(ListenerDropGuard {
+                chan: Arc::clone(&chan),
+                hdl,
+            }),
             chan,
             emitter,
-            msg_listener_hdl: hdl,
         })
     }
 
@@ -205,11 +224,6 @@ impl Receiver {
     }
 }
 
-impl Drop for Receiver {
-    fn drop(&mut self) {
-        self.chan.remove_msg_listener(self.msg_listener_hdl);
-    }
-}
 
 /// Represents some general information about a Unifying receiver.
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
