@@ -22,7 +22,16 @@ pub(crate) fn package_linux(args: &PackageLinux) -> Result<()> {
     if !args.no_build {
         println!("==> build release binaries");
         run(ProcessCommand::new("cargo")
-            .args(["build", "--release", "-p", "openlogi", "-p", "openlogi-gui", "-p", "openlogi-agent"])
+            .args([
+                "build",
+                "--release",
+                "-p",
+                "openlogi",
+                "-p",
+                "openlogi-gui",
+                "-p",
+                "openlogi-agent",
+            ])
             .current_dir(&root))?;
     }
 
