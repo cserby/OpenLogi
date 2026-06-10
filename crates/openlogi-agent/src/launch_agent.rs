@@ -260,8 +260,7 @@ fn reconcile_linux(enabled: bool) -> io::Result<()> {
 /// (default `~/.config/systemd/user/openlogi-agent.service`).
 #[cfg(target_os = "linux")]
 fn unit_path() -> io::Result<PathBuf> {
-    let config_home =
-        openlogi_core::paths::xdg_config_home().map_err(io::Error::other)?;
+    let config_home = openlogi_core::paths::xdg_config_home().map_err(io::Error::other)?;
     Ok(config_home.join("systemd").join("user").join(UNIT_NAME))
 }
 
