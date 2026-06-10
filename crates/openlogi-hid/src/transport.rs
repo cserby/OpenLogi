@@ -165,6 +165,7 @@ fn is_receiver_child_node(id: &async_hid::DeviceId) -> bool {
 /// Determines whether a resolved sysfs path belongs to a device that is a
 /// child of a known receiver. Separated from `is_receiver_child_node` so it
 /// can be unit-tested without filesystem access.
+#[cfg(any(target_os = "linux", test))]
 fn is_receiver_child_sysfs_path(path: &str) -> bool {
     // Build parent-component markers from the canonical PID lists so adding a
     // new receiver PID only needs to be done in one place (route.rs).
