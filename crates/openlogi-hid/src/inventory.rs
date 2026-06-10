@@ -476,7 +476,17 @@ async fn probe_unifying_receiver(
     // Pass the receiver UID so each slot's cache key is scoped to this specific
     // receiver — two Unifying receivers sharing a slot number must not share a
     // cache entry (different devices, different capabilities).
-    let receiver_uid = unique_id.as_deref().unwrap_or("");
+    let receiver_uid_fallback;
+    let receiver_uid = if let Some(uid) = unique_id.as_deref() {
+        uid
+    } else {
+        // UID fetch failed — use the product ID as a weaker discriminant so
+        // two receivers with the same PID still collide, but a receiver and a
+        // direct device never share a cache entry.
+        tracing::warn!("Unifying receiver UID unavailable; cache isolation may be degraded");
+        receiver_uid_fallback = format!("pid:{:04x}", info.product_id);
+        &receiver_uid_fallback
+    };
     let slot_results = connections
         .iter()
         .map(|conn| probe_unifying_slot(&channel, conn, receiver_uid, cache, tick))
