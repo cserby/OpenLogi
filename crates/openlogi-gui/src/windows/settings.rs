@@ -7,8 +7,8 @@
 
 use gpui::{
     AnyElement, App, AppContext as _, BorrowAppContext as _, Context, Entity, InteractiveElement,
-    IntoElement, ParentElement as _, Render, SharedString, Size, Styled as _, Subscription, Window,
-    div, prelude::FluentBuilder as _, px, rgb,
+    IntoElement, ParentElement as _, Render, SharedString, Size, StatefulInteractiveElement as _,
+    Styled as _, Subscription, Window, div, prelude::FluentBuilder as _, px, rgb,
 };
 use gpui_component::{
     IconName, IndexPath, Sizable, h_flex,
@@ -403,6 +403,7 @@ fn selected_language_index(current: Option<&str>, options: &[LanguageOption]) ->
 }
 
 /// A coloured status word for a permission row.
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 fn status_badge(status: PermissionStatus) -> impl IntoElement {
     let (label, color) = match status {
         PermissionStatus::Granted => (tr!("Granted"), theme::STATUS_CONNECTED),

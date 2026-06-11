@@ -79,12 +79,6 @@ pub fn input_device_access() -> PermissionStatus {
     classify(uinput_ok, hidraw_ok)
 }
 
-#[cfg(not(any(target_os = "macos", target_os = "linux")))]
-#[must_use]
-pub fn input_device_access() -> PermissionStatus {
-    PermissionStatus::Unknown
-}
-
 /// Pure classification logic, factored out so it is testable without device nodes.
 ///
 /// - `uinput_ok`: whether `/dev/uinput` is writable.
