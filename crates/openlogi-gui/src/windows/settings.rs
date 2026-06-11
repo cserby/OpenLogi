@@ -262,7 +262,6 @@ fn permissions_page(pal: Palette) -> SettingPage {
                 tr!("Needed for gesture and button remapping (event tap)."),
                 Permission::Accessibility,
                 |cx| {
-<<<<<<< HEAD
                     // The agent owns the hook, so this is *its* grant,
                     // reported over IPC; before the first snapshot the
                     // state is genuinely unknown, not denied.
@@ -273,15 +272,6 @@ fn permissions_page(pal: Palette) -> SettingPage {
                         Some(true) => PermissionStatus::Granted,
                         Some(false) => PermissionStatus::Denied,
                         None => PermissionStatus::Unknown,
-=======
-                    if cx
-                        .try_global::<AppState>()
-                        .is_some_and(|s| s.accessibility_granted)
-                    {
-                        PermissionStatus::Granted
-                    } else {
-                        PermissionStatus::Denied
->>>>>>> 3138252 (feat(linux): input device access permission check)
                     }
                 },
                 pal,
@@ -313,7 +303,6 @@ fn permissions_page(pal: Palette) -> SettingPage {
             SettingField::render(move |_, _, _| {
                 let status = permissions::input_device_access();
                 let field = gpui_component::v_flex().gap_1().child(status_badge(status));
-<<<<<<< HEAD
                 let hint = match status {
                     PermissionStatus::Denied => Some(tr!(
                         "OpenLogi needs write access to /dev/uinput (for button \
@@ -329,15 +318,6 @@ fn permissions_page(pal: Palette) -> SettingPage {
                 };
                 if let Some(text) = hint {
                     field.child(div().text_xs().text_color(pal.text_muted).child(text))
-=======
-                if matches!(status, PermissionStatus::Denied | PermissionStatus::Unknown) {
-                    field.child(div().text_xs().text_color(pal.text_muted).child(tr!(
-                        "OpenLogi needs write access to /dev/uinput (for button \
-                             remapping) and read/write access to /dev/hidraw* (for HID++ \
-                             communication). Install the OpenLogi udev rules to grant \
-                             access — see the Linux install guide."
-                    )))
->>>>>>> 3138252 (feat(linux): input device access permission check)
                 } else {
                     field
                 }

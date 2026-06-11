@@ -64,6 +64,12 @@ ls -la /dev/hidraw*
 The GUI Settings → Permissions page shows a live `Granted` / `Not granted`
 indicator; check it after installing the rules (no restart needed).
 
+> **Device already connected?** `udevadm trigger` re-evaluates rules but does
+> not re-grant `uaccess` ACLs on nodes that were already open when the rules
+> were installed. If access is still denied, unplug and replug your receiver or
+> mouse (or power-cycle for wireless devices) to let udev apply the new rules on
+> reconnect.
+
 ### Non-systemd systems (SysV init, OpenRC)
 
 Replace `TAG+="uaccess"` in the rules file with `MODE="0660", GROUP="input"`,
